@@ -1,0 +1,16 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "description": "��#\u0000#\u0000 \u0000�{�N\r\u0000 \u0000ُ/f\u0000N*N(u�N�~`N�vy��v\f��e(W�cؚ\u0016\u000bz�b���Ty��v�{\u0006t���R\u00020\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
