@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无限滚动加载 - 原生实现</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .status-info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .status-info span {
+            font-weight: bold;
+            color: #1976d2;
+        }
+
+        .list-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 600px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .list-item {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s ease;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .list-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .list-item h3 {
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .list-item p {
+            color: #7f8c8d;
+            line-height: 1.6;
+        }
+
+        .list-item .meta {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        /* 加载状态样式 */
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading-spinner.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 哨兵元素 */
+        .sentinel {
+            height: 1px;
+            margin-top: 20px;
+        }
+
+        /* 加载完成提示 */
+        .end-message {
+            text-align: center;
+            padding: 40px;
+            color: #95a5a6;
+            display: none;
+        }
+
+        .end-message.active {
+            display: block;
+        }
+
+        /* 错误提示 */
+        .error-message {
+            text-align: center;
+            padding: 20px;
+            color: #e74c3c;
+            background-color: #fee;
+            border-radius: 4px;
+            margin: 20px;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        /* 调试信息 */
+        .debug-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+
+        .debug-panel h4 {
+            margin-bottom: 10px;
+        }
+
+        .debug-panel div {
+            margin: 5px 0;
+        }
+
+        .debug-panel .label {
+            display: inline-block;
+            width: 120px;
+            color: #64b5f6;
+        }
+
+        /* 控制按钮 */
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover {
+            background-color: #2980b9;
+        }
+
+        .controls button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>无限滚动加载示例</h1>
+        
+        <div class="status-info">
+            <div>检测方式：<span id="detection-method">初始化中...</span></div>
+            <div>已加载项目：<span id="loaded-count">0</span> 个</div>
+            <div>总项目数：<span id="total-count">100</span> 个</div>
+        </div>
+
+        <div class="controls">
+            <button id="reset-btn">重置列表</button>
+            <button id="toggle-debug">切换调试面板</button>
+            <button id="simulate-fast-scroll">模拟快速滚动</button>
+        </div>
+
+        <div class="list-container" id="list-container">
+            <div id="list-content"></div>
+            
+            <!-- 加载中提示 -->
+            <div class="loading-spinner" id="loading-spinner">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+            </div>
+            
+            <!-- 哨兵元素 -->
+            <div class="sentinel" id="sentinel"></div>
+            
+            <!-- 加载完成提示 -->
+            <div class="end-message" id="end-message">
+                <p>🎉 所有内容已加载完成</p>
+            </div>
+            
+            <!-- 错误提示 -->
+            <div class="error-message" id="error-message">
+                <p>加载失败，请重试</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试面板 -->
+    <div class="debug-panel" id="debug-panel" style="display: none;">
+        <h4>调试信息</h4>
+        <div><span class="label">Observer状态:</span><span id="observer-status">-</span></div>
+        <div><span class="label">滚动监听状态:</span><span id="scroll-status">-</span></div>
+        <div><span class="label">触发次数:</span><span id="trigger-count">0</span></div>
+        <div><span class="label">滚动位置:</span><span id="scroll-position">-</span></div>
+        <div><span class="label">距离底部:</span><span id="distance-to-bottom">-</span></div>
+    </div>
+
+    <script>
+        // 配置参数
+        const CONFIG = {
+            pageSize: 10,              // 每页加载数量
+            totalItems: 100,           // 总数据量
+            loadDelay: 1000,           // 模拟加载延迟（毫秒）
+            scrollThreshold: 100,      // 滚动触发阈值（距离底部像素）
+            observerThreshold: 0.1,    // IntersectionObserver 触发阈值
+            useObserver: true,         // 是否使用 IntersectionObserver
+            useScrollFallback: true,   // 是否启用滚动事件作为备用
+            debugMode: false,          // 调试模式
+            throttleDelay: 200         // 滚动事件节流延迟
+        };
+
+        // 应用状态
+        const state = {
+            currentPage: 0,
+            loadedItems: 0,
+            isLoading: false,
+            hasMore: true,
+            observer: null,
+            triggerCount: 0,
+            lastTriggerSource: null
+        };
+
+        // DOM 元素
+        const elements = {
+            listContent: document.getElementById('list-content'),
+            loadingSpinner: document.getElementById('loading-spinner'),
+            sentinel: document.getElementById('sentinel'),
+            endMessage: document.getElementById('end-message'),
+            errorMessage: document.getElementById('error-message'),
+            listContainer: document.getElementById('list-container'),
+            // 状态显示
+            detectionMethod: document.getElementById('detection-method'),
+            loadedCount: document.getElementById('loaded-count'),
+            totalCount: document.getElementById('total-count'),
+            // 调试面板
+            debugPanel: document.getElementById('debug-panel'),
+            observerStatus: document.getElementById('observer-status'),
+            scrollStatus: document.getElementById('scroll-status'),
+            triggerCount: document.getElementById('trigger-count'),
+            scrollPosition: document.getElementById('scroll-position'),
+            distanceToBottom: document.getElementById('distance-to-bottom')
+        };
+
+        // 生成模拟数据
+        function generateMockData(page, pageSize) {
+            const items = [];
+            const start = page * pageSize;
+            const end = Math.min(start + pageSize, CONFIG.totalItems);
+            
+            for (let i = start; i < end; i++) {
+                items.push({
+                    id: i + 1,
+                    title: `项目 ${i + 1}`,
+                    description: `这是第 ${i + 1} 个项目的描述内容。这里可以包含更多的信息，让列表看起来更真实。`,
+                    time: new Date().toLocaleString(),
+                    category: ['技术', '生活', '工作', '学习'][Math.floor(Math.random() * 4)]
+                });
+            }
+            
+            return items;
+        }
+
+        // 渲染列表项
+        function renderItems(items) {
+            const fragment = document.createDocumentFragment();
+            
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                    <div class="meta">
+                        <span>分类: ${item.category}</span> | 
+                        <span>时间: ${item.time}</span>
+                    </div>
+                `;
+                fragment.appendChild(div);
+            });
+            
+            elements.listContent.appendChild(fragment);
+        }
+
+        // 加载更多数据
+        async function loadMore(source = 'unknown') {
+            if (state.isLoading || !state.hasMore) {
+                console.log('跳过加载：', state.isLoading ? '正在加载中' : '没有更多数据');
+                return;
+            }
+            
+            state.isLoading = true;
+            state.lastTriggerSource = source;
+            state.triggerCount++;
+            updateDebugInfo();
+            
+            // 显示加载状态
+            elements.loadingSpinner.classList.add('active');
+            elements.errorMessage.classList.remove('active');
+            
+            try {
+                // 模拟网络请求
+                await new Promise(resolve => setTimeout(resolve, CONFIG.loadDelay));
+                
+                // 获取数据
+                const items = generateMockData(state.currentPage, CONFIG.pageSize);
+                
+                if (items.length > 0) {
+                    renderItems(items);
+                    state.currentPage++;
+                    state.loadedItems += items.length;
+                    
+                    // 更新状态显示
+                    elements.loadedCount.textContent = state.loadedItems;
+                    
+                    // 检查是否还有更多数据
+                    if (state.loadedItems >= CONFIG.totalItems) {
+                        state.hasMore = false;
+                        elements.endMessage.classList.add('active');
+                        elements.sentinel.style.display = 'none';
+                    }
+                } else {
+                    state.hasMore = false;
+                    elements.endMessage.classList.add('active');
+                }
+                
+            } catch (error) {
+                console.error('加载失败:', error);
+                elements.errorMessage.classList.add('active');
+            } finally {
+                state.isLoading = false;
+                elements.loadingSpinner.classList.remove('active');
+                updateDebugInfo();
+            }
+        }
+
+        // 节流函数
+        function throttle(func, delay) {
+            let timeoutId;
+            let lastExecTime = 0;
+            
+            return function (...args) {
+                const currentTime = Date.now();
+                
+                if (currentTime - lastExecTime > delay) {
+                    func.apply(this, args);
+                    lastExecTime = currentTime;
+                } else {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        func.apply(this, args);
+                        lastExecTime = Date.now();
+                    }, delay - (currentTime - lastExecTime));
+                }
+            };
+        }
+
+        // 检查滚动位置
+        function checkScrollPosition() {
+            const scrollTop = elements.listContainer.scrollTop;
+            const scrollHeight = elements.listContainer.scrollHeight;
+            const clientHeight = elements.listContainer.clientHeight;
+            const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+            
+            // 更新调试信息（始终更新，但只在调试模式下显示）
+            elements.scrollPosition.textContent = `${Math.round(scrollTop)}px`;
+            elements.distanceToBottom.textContent = `${Math.round(distanceToBottom)}px`;
+            
+            // 当距离底部小于阈值时加载更多
+            if (distanceToBottom < CONFIG.scrollThreshold) {
+                loadMore('scroll');
+            }
+        }
+
+        // 节流后的滚动处理函数
+        const throttledScrollHandler = throttle(checkScrollPosition, CONFIG.throttleDelay);
+
+        // 设置 IntersectionObserver
+        function setupIntersectionObserver() {
+            if (!('IntersectionObserver' in window) || !CONFIG.useObserver) {
+                console.log('IntersectionObserver 不可用或已禁用');
+                elements.observerStatus.textContent = '不可用';
+                return false;
+            }
+            
+            const options = {
+                root: elements.listContainer,
+                rootMargin: `0px 0px ${CONFIG.scrollThreshold}px 0px`,
+                threshold: CONFIG.observerThreshold
+            };
+            
+            state.observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        console.log('IntersectionObserver 触发');
+                        loadMore('observer');
+                    }
+                });
+            }, options);
+            
+            state.observer.observe(elements.sentinel);
+            elements.observerStatus.textContent = '已启用';
+            return true;
+        }
+
+        // 设置滚动监听
+        function setupScrollListener() {
+            if (!CONFIG.useScrollFallback) {
+                elements.scrollStatus.textContent = '已禁用';
+                return;
+            }
+            
+            elements.listContainer.addEventListener('scroll', throttledScrollHandler, { passive: true });
+            elements.scrollStatus.textContent = '已启用';
+        }
+
+        // 更新调试信息
+        function updateDebugInfo() {
+            if (!CONFIG.debugMode) return;
+            
+            elements.triggerCount.textContent = state.triggerCount;
+            
+            // 更新检测方式显示
+            let method = [];
+            if (state.observer) method.push('IntersectionObserver');
+            if (CONFIG.useScrollFallback) method.push('滚动事件');
+            elements.detectionMethod.textContent = method.join(' + ') || '无';
+        }
+
+        // 重置列表
+        function resetList() {
+            // 清空列表
+            elements.listContent.innerHTML = '';
+            
+            // 重置状态
+            state.currentPage = 0;
+            state.loadedItems = 0;
+            state.isLoading = false;
+            state.hasMore = true;
+            state.triggerCount = 0;
+            
+            // 重置UI
+            elements.endMessage.classList.remove('active');
+            elements.errorMessage.classList.remove('active');
+            elements.sentinel.style.display = 'block';
+            elements.loadedCount.textContent = '0';
+            
+            // 重新加载第一页
+            loadMore('reset');
+        }
+
+        // 模拟快速滚动
+        function simulateFastScroll() {
+            const scrollHeight = elements.listContainer.scrollHeight;
+            const duration = 500; // 500ms 内滚动到底部
+            const start = elements.listContainer.scrollTop;
+            const distance = scrollHeight - start - elements.listContainer.clientHeight;
+            const startTime = performance.now();
+            
+            function scrollAnimation(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                elements.listContainer.scrollTop = start + distance * progress;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(scrollAnimation);
+                }
+            }
+            
+            requestAnimationFrame(scrollAnimation);
+        }
+
+        // 初始化
+        function init() {
+            // 设置总数
+            elements.totalCount.textContent = CONFIG.totalItems;
+            
+            // 设置 IntersectionObserver
+            const observerEnabled = setupIntersectionObserver();
+            
+            // 设置滚动监听
+            setupScrollListener();
+            
+            // 绑定控制按钮
+            document.getElementById('reset-btn').addEventListener('click', resetList);
+            document.getElementById('toggle-debug').addEventListener('click', () => {
+                CONFIG.debugMode = !CONFIG.debugMode;
+                elements.debugPanel.style.display = CONFIG.debugMode ? 'block' : 'none';
+                updateDebugInfo();
+                checkScrollPosition(); // 立即更新滚动位置信息
+            });
+            document.getElementById('simulate-fast-scroll').addEventListener('click', simulateFastScroll);
+            
+            // 加载初始数据
+            loadMore('init');
+            
+            // 更新调试信息
+            updateDebugInfo();
+            
+            // 初始化滚动位置信息
+            checkScrollPosition();
+        }
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>
