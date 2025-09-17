@@ -448,6 +448,7 @@
             
             state.observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
+                  console.log(entry, 'entry')
                     if (entry.isIntersecting) {
                         console.log('IntersectionObserver 触发');
                         loadMore('observer');
