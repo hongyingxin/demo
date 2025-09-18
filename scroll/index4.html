@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RootMargin 详解 Demo</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .tip {
+      margin: 20px 0;
+      padding: 15px;
+      background: #e3f2fd;
+      border: 1px solid #2196F3;
+      border-radius: 4px;
+      color: #1565C0;
+    }
+
+    /* 主要演示区域 */
+    .main-demo {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    /* 控制面板 */
+    .control-panel {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .control-panel h3 {
+      margin: 0 0 15px 0;
+      color: #333;
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      margin-bottom: 5px;
+    }
+
+    .value-display {
+      font-size: 12px;
+      color: #999;
+      text-align: right;
+    }
+
+    .margin-preview {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    /* 演示容器 */
+    .demo-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .scroll-container {
+      height: 500px;
+      overflow-y: auto;
+      border: 3px solid #333;
+      background: #fafafa;
+      position: relative;
+      border-radius: 4px;
+    }
+
+    /* 视口边界（原始） */
+    .viewport-boundary {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      border: 3px solid #2196F3;
+      background: rgba(33, 150, 243, 0.05);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .viewport-label {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #2196F3;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* RootMargin 边界（扩展后） */
+    .rootmargin-boundary {
+      position: absolute;
+      border: 3px dashed #f44336;
+      background: rgba(244, 67, 54, 0.05);
+      pointer-events: none;
+      z-index: 1;
+      transition: all 0.3s ease;
+    }
+
+    .rootmargin-label {
+      position: absolute;
+      top: -25px;
+      left: 10px;
+      background: #f44336;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* 目标元素 */
+    .target-element {
+      width: 200px;
+      height: 150px;
+      margin: 400px auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .target-element.intersecting {
+      transform: scale(1.1);
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .status-badge {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4CAF50;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .target-element.intersecting .status-badge {
+      opacity: 1;
+    }
+
+    /* 示例展示 */
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 40px;
+    }
+
+    .example-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .example-card h3 {
+      margin: 0 0 15px 0;
+      color: #4CAF50;
+    }
+
+    .example-visual {
+      height: 200px;
+      border: 2px solid #ddd;
+      position: relative;
+      margin-bottom: 15px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+
+    .mini-viewport {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60%;
+      height: 60%;
+      border: 2px solid #2196F3;
+      background: rgba(33, 150, 243, 0.1);
+    }
+
+    .mini-rootmargin {
+      position: absolute;
+      border: 2px dashed #f44336;
+      background: rgba(244, 67, 54, 0.05);
+    }
+
+    .mini-element {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: #9c27b0;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    .example-desc {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .code-snippet {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #333;
+    }
+
+    /* 说明部分 */
+    .explanation {
+      margin-top: 40px;
+      padding: 30px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .explanation h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .explanation ul {
+      line-height: 1.8;
+      color: #666;
+    }
+
+    .explanation li {
+      margin-bottom: 10px;
+    }
+
+    /* 方向指示器 */
+    .direction-indicators {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+
+    .direction-arrow {
+      position: absolute;
+      font-size: 20px;
+      color: #f44336;
+      font-weight: bold;
+    }
+
+    .direction-arrow.top {
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .direction-arrow.right {
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .direction-arrow.bottom {
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .direction-arrow.left {
+      left: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>RootMargin 详解 - 扩展检测边界</h1>
+    
+    <div class="tip">
+      💡 <strong>RootMargin 的作用：</strong>扩展或收缩根元素（视口）的边界，让元素在实际进入视口之前或之后触发。
+      可以理解为给视口加了一个"外边距"。
+    </div>
+
+    <div class="main-demo">
+      <!-- 控制面板 -->
+      <div class="control-panel">
+        <h3>调整 RootMargin</h3>
+        
+        <div class="control-group">
+          <label>上边距 (Top)</label>
+          <input type="range" id="marginTop" min="-200" max="200" value="0">
+          <div class="value-display">值: <span id="topValue">0px</span></div>
+        </div>
+        
+        <div class="control-group">
+          <label>右边距 (Right)</label>
+          <input type="range" id="marginRight" min="-200" max="200" value="0">
+          <div class="value-display">值: <span id="rightValue">0px</span></div>
+        </div>
+        
+        <div class="control-group">
+          <label>下边距 (Bottom)</label>
+          <input type="range" id="marginBottom" min="-200" max="200" value="0">
+          <div class="value-display">值: <span id="bottomValue">0px</span></div>
+        </div>
+        
+        <div class="control-group">
+          <label>左边距 (Left)</label>
+          <input type="range" id="marginLeft" min="-200" max="200" value="0">
+          <div class="value-display">值: <span id="leftValue">0px</span></div>
+        </div>
+        
+        <div class="margin-preview">
+          rootMargin:<br>
+          "<span id="marginString">0px 0px 0px 0px</span>"
+        </div>
+        
+        <button onclick="applyRootMargin()">应用设置</button>
+        <button onclick="resetRootMargin()" style="background-color: #666;">重置</button>
+      </div>
+
+      <!-- 演示区域 -->
+      <div class="demo-container">
+        <h3>可视化演示</h3>
+        <div class="scroll-container" id="scrollContainer">
+          <!-- 原始视口边界 -->
+          <div class="viewport-boundary">
+            <div class="viewport-label">原始视口</div>
+          </div>
+          
+          <!-- RootMargin 边界 -->
+          <div class="rootmargin-boundary" id="rootMarginBoundary">
+            <div class="rootmargin-label">检测边界 (视口 + rootMargin)</div>
+            <div class="direction-indicators">
+              <div class="direction-arrow top" id="arrowTop">↑</div>
+              <div class="direction-arrow right" id="arrowRight">→</div>
+              <div class="direction-arrow bottom" id="arrowBottom">↓</div>
+              <div class="direction-arrow left" id="arrowLeft">←</div>
+            </div>
+          </div>
+          
+          <!-- 目标元素 -->
+          <div class="target-element" id="targetElement">
+            <div class="status-badge">检测到！</div>
+            目标元素
+          </div>
+        </div>
+        
+        <p style="margin-top: 15px; color: #666; font-size: 14px;">
+          🔵 蓝色实线框 = 原始视口边界<br>
+          🔴 红色虚线框 = 实际检测边界（应用 rootMargin 后）
+        </p>
+      </div>
+    </div>
+
+    <!-- 常见用例示例 -->
+    <div class="examples-grid">
+      <div class="example-card">
+        <h3>提前加载（正值）</h3>
+        <div class="example-visual">
+          <div class="mini-viewport"></div>
+          <div class="mini-rootmargin" style="top: 10%; left: 10%; right: 10%; bottom: 10%;"></div>
+          <div class="mini-element" style="bottom: 5%; left: 50%; transform: translateX(-50%);"></div>
+        </div>
+        <div class="code-snippet">rootMargin: "200px"</div>
+        <p class="example-desc">
+          使用正值扩展检测边界，元素还未进入视口就能被检测到。
+          适合图片懒加载，提前加载即将进入视口的图片。
+        </p>
+      </div>
+
+      <div class="example-card">
+        <h3>延迟触发（负值）</h3>
+        <div class="example-visual">
+          <div class="mini-viewport"></div>
+          <div class="mini-rootmargin" style="top: 35%; left: 35%; right: 35%; bottom: 35%;"></div>
+          <div class="mini-element" style="top: 45%; left: 50%; transform: translate(-50%, -50%);"></div>
+        </div>
+        <div class="code-snippet">rootMargin: "-100px"</div>
+        <p class="example-desc">
+          使用负值收缩检测边界，元素需要更深入视口才被检测到。
+          适合确保元素真正被用户关注时才触发。
+        </p>
+      </div>
+
+      <div class="example-card">
+        <h3>水平滚动优化</h3>
+        <div class="example-visual">
+          <div class="mini-viewport"></div>
+          <div class="mini-rootmargin" style="top: 20%; left: -10%; right: -10%; bottom: 20%;"></div>
+          <div class="mini-element" style="top: 50%; right: -15%; transform: translateY(-50%);"></div>
+        </div>
+        <div class="code-snippet">rootMargin: "0px 200px"</div>
+        <p class="example-desc">
+          只在水平方向扩展边界，适合横向滚动的场景。
+          如轮播图预加载下一张图片。
+        </p>
+      </div>
+
+      <div class="example-card">
+        <h3>底部无限滚动</h3>
+        <div class="example-visual">
+          <div class="mini-viewport"></div>
+          <div class="mini-rootmargin" style="top: 20%; left: 20%; right: 20%; bottom: -30%;"></div>
+          <div class="mini-element" style="bottom: -20%; left: 50%; transform: translateX(-50%);"></div>
+        </div>
+        <div class="code-snippet">rootMargin: "0px 0px 300px 0px"</div>
+        <p class="example-desc">
+          只在底部扩展边界，当滚动接近底部时触发。
+          完美适用于无限滚动加载更多内容。
+        </p>
+      </div>
+    </div>
+
+    <!-- 详细说明 -->
+    <div class="explanation">
+      <h2>📖 RootMargin 详细说明</h2>
+      
+      <h3>语法格式</h3>
+      <ul>
+        <li><strong>完整格式：</strong><code>"top right bottom left"</code> - 类似 CSS margin</li>
+        <li><strong>两个值：</strong><code>"vertical horizontal"</code> - 上下相同，左右相同</li>
+        <li><strong>一个值：</strong><code>"all"</code> - 四个方向相同</li>
+        <li><strong>单位：</strong>必须包含单位（px 或 %），不能只写数字</li>
+      </ul>
+
+      <h3>正值 vs 负值</h3>
+      <ul>
+        <li><strong>正值（如 "100px"）：</strong>扩展检测边界，元素提前被检测到</li>
+        <li><strong>负值（如 "-100px"）：</strong>收缩检测边界，元素需要更深入才被检测到</li>
+      </ul>
+
+      <h3>实际应用场景</h3>
+      <ul>
+        <li><strong>图片懒加载：</strong>使用正值（如 "200px"）提前加载即将进入视口的图片</li>
+        <li><strong>无限滚动：</strong>底部使用正值（如 "0px 0px 300px 0px"）提前触发加载</li>
+        <li><strong>数据统计：</strong>使用负值（如 "-50px"）确保元素真正被看到</li>
+        <li><strong>动画触发：</strong>根据需要调整，让动画在合适的时机开始</li>
+      </ul>
+
+      <h3>注意事项</h3>
+      <ul>
+        <li>rootMargin 不会改变元素的实际位置，只改变检测边界</li>
+        <li>可以组合使用 rootMargin 和 threshold 实现复杂的检测逻辑</li>
+        <li>百分比单位是相对于根元素的尺寸计算的</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    let observer = null;
+    const targetElement = document.getElementById('targetElement');
+    const scrollContainer = document.getElementById('scrollContainer');
+    const rootMarginBoundary = document.getElementById('rootMarginBoundary');
+
+    // 初始化
+    function init() {
+      createObserver();
+      
+      // 绑定滑块事件
+      ['Top', 'Right', 'Bottom', 'Left'].forEach(side => {
+        const slider = document.getElementById(`margin${side}`);
+        const display = document.getElementById(`${side.toLowerCase()}Value`);
+        
+        slider.addEventListener('input', (e) => {
+          display.textContent = `${e.target.value}px`;
+          updateMarginString();
+          updateBoundaryVisual();
+        });
+      });
+    }
+
+    // 创建观察器
+    function createObserver(rootMargin = '0px 0px 0px 0px') {
+      if (observer) {
+        observer.disconnect();
+      }
+
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('intersecting');
+          } else {
+            entry.target.classList.remove('intersecting');
+          }
+        });
+      }, {
+        root: scrollContainer,
+        rootMargin: rootMargin,
+        threshold: 0
+      });
+
+      observer.observe(targetElement);
+    }
+
+    // 应用 RootMargin
+    function applyRootMargin() {
+      const marginString = document.getElementById('marginString').textContent;
+      createObserver(marginString);
+    }
+
+    // 重置
+    function resetRootMargin() {
+      ['Top', 'Right', 'Bottom', 'Left'].forEach(side => {
+        document.getElementById(`margin${side}`).value = 0;
+        document.getElementById(`${side.toLowerCase()}Value`).textContent = '0px';
+      });
+      updateMarginString();
+      updateBoundaryVisual();
+      applyRootMargin();
+    }
+
+    // 更新 margin 字符串
+    function updateMarginString() {
+      const values = ['Top', 'Right', 'Bottom', 'Left'].map(side => 
+        document.getElementById(`margin${side}`).value + 'px'
+      );
+      document.getElementById('marginString').textContent = values.join(' ');
+    }
+
+    // 更新边界可视化
+    function updateBoundaryVisual() {
+      const margins = ['Top', 'Right', 'Bottom', 'Left'].map(side => 
+        parseInt(document.getElementById(`margin${side}`).value)
+      );
+      
+      // 更新边界位置
+      rootMarginBoundary.style.top = `${-margins[0]}px`;
+      rootMarginBoundary.style.right = `${-margins[1]}px`;
+      rootMarginBoundary.style.bottom = `${-margins[2]}px`;
+      rootMarginBoundary.style.left = `${-margins[3]}px`;
+      
+      // 更新箭头显示
+      ['Top', 'Right', 'Bottom', 'Left'].forEach((side, index) => {
+        const arrow = document.getElementById(`arrow${side}`);
+        const value = margins[index];
+        
+        if (value > 0) {
+          arrow.style.display = 'block';
+          arrow.style.color = '#4CAF50';
+        } else if (value < 0) {
+          arrow.style.display = 'block';
+          arrow.style.color = '#f44336';
+        } else {
+          arrow.style.display = 'none';
+        }
+      });
+    }
+
+    // 初始化
+    init();
+  </script>
+</body>
+</html>
