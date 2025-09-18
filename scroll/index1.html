@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简单的 Intersection Observer Demo</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .box {
+      height: 200px;
+      margin: 50px 0;
+      background-color: #f0f0f0;
+      border: 2px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all 0.3s ease;
+    }
+
+    /* 当元素进入视口时的样式 */
+    .box.in-view {
+      background-color: #4CAF50;
+      color: white;
+      transform: scale(1.05);
+      border-color: #45a049;
+    }
+
+    .info {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    /* 让页面可以滚动 */
+    .spacer {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>简单的 Intersection Observer API Demo</h1>
+    <p>滚动页面查看效果。当方块进入视口时会变成绿色。</p>
+    
+    <div class="info">
+      <div>可见元素: <span id="visible-count">0</span></div>
+      <div>总元素数: <span id="total-count">0</span></div>
+    </div>
+
+    <div class="spacer">↓ 向下滚动 ↓</div>
+
+    <!-- 要观察的元素 -->
+    <div class="box" data-index="1">Box 1</div>
+    <div class="box" data-index="2">Box 2</div>
+    <div class="box" data-index="3">Box 3</div>
+    <div class="box" data-index="4">Box 4</div>
+    <div class="box" data-index="5">Box 5</div>
+    <div class="box" data-index="6">Box 6</div>
+    <div class="box" data-index="7">Box 7</div>
+    <div class="box" data-index="8">Box 8</div>
+
+    <div class="spacer">已到底部</div>
+  </div>
+
+  <script>
+    // 创建 Intersection Observer
+    const observer = new IntersectionObserver((entries, observer) => {
+      // entries 是所有被观察元素的数组
+      entries.forEach(entry => {
+        // entry.isIntersecting 表示元素是否在视口中
+        if (entry.isIntersecting) {
+          // 元素进入视口
+          entry.target.classList.add('in-view');
+          console.log(`Box ${entry.target.dataset.index} 进入视口`);
+        } else {
+          // 元素离开视口
+          entry.target.classList.remove('in-view');
+          console.log(`Box ${entry.target.dataset.index} 离开视口`);
+        }
+      });
+
+      // 更新可见元素计数
+      updateVisibleCount();
+    }, {
+      // 配置选项
+      root: null, // null 表示视口
+      rootMargin: '0px', // 可以扩大或缩小根元素的边界
+      threshold: 0.5 // 当元素50%可见时触发回调
+    });
+
+    // 获取所有要观察的元素
+    const boxes = document.querySelectorAll('.box');
+    
+    // 开始观察每个元素
+    boxes.forEach(box => {
+      observer.observe(box);
+    });
+
+    // 更新计数器
+    function updateVisibleCount() {
+      const visibleBoxes = document.querySelectorAll('.box.in-view').length;
+      document.getElementById('visible-count').textContent = visibleBoxes;
+      document.getElementById('total-count').textContent = boxes.length;
+    }
+
+    // 初始化计数
+    updateVisibleCount();
+
+    // 演示如何停止观察（可选）
+    // setTimeout(() => {
+    //   observer.disconnect(); // 停止观察所有元素
+    // }, 10000);
+
+    // 演示如何停止观察单个元素（可选）
+    // observer.unobserve(boxes[0]);
+  </script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intersection Observer 配置选项 Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    .main-container {
+      display: flex;
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* 控制面板样式 */
+    .control-panel {
+      position: sticky;
+      top: 20px;
+      width: 350px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      height: fit-content;
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .control-group:last-child {
+      border-bottom: none;
+    }
+
+    .control-group h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .control-group input[type="range"],
+    .control-group input[type="number"],
+    .control-group select {
+      width: 100%;
+      margin-bottom: 5px;
+    }
+
+    .control-group input[type="range"] {
+      cursor: pointer;
+    }
+
+    .value-display {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .threshold-inputs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .threshold-inputs input {
+      width: 60px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    /* 演示区域样式 */
+    .demo-area {
+      flex: 1;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+
+    .scroll-container {
+      position: relative;
+      height: 500px;
+      overflow-y: auto;
+      border: 2px solid #ddd;
+      background: #fafafa;
+      border-radius: 4px;
+    }
+
+    /* Root 边界可视化 */
+    .root-boundary {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border: 2px dashed #ff6b6b;
+      background: rgba(255, 107, 107, 0.1);
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+
+    .root-boundary::before {
+      content: 'Root + rootMargin 边界';
+      position: absolute;
+      top: -20px;
+      left: 10px;
+      font-size: 12px;
+      color: #ff6b6b;
+      background: white;
+      padding: 2px 5px;
+    }
+
+    /* 目标元素样式 */
+    .target-box {
+      width: 80%;
+      height: 150px;
+      margin: 100px auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .target-box.intersecting {
+      transform: scale(1.05);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .target-box::after {
+      content: attr(data-ratio);
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 14px;
+      background: rgba(0,0,0,0.3);
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+
+    /* 信息显示 */
+    .info-panel {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .info-item {
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .info-label {
+      font-weight: bold;
+      color: #666;
+    }
+
+    .info-value {
+      color: #333;
+      font-family: monospace;
+    }
+
+    .threshold-markers {
+      position: absolute;
+      left: 0;
+      right: 0;
+      pointer-events: none;
+    }
+
+    .threshold-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4CAF50;
+      opacity: 0.5;
+    }
+
+    .threshold-line::after {
+      content: attr(data-threshold);
+      position: absolute;
+      left: 10px;
+      top: -20px;
+      font-size: 12px;
+      color: #4CAF50;
+      background: white;
+      padding: 2px 5px;
+    }
+
+    .log-panel {
+      margin-top: 20px;
+      padding: 15px;
+      background: #2d3436;
+      color: #dfe6e9;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 5px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 2px;
+    }
+
+    .log-time {
+      color: #74b9ff;
+      margin-right: 10px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Intersection Observer 配置选项演示</h1>
+  
+  <div class="main-container">
+    <!-- 控制面板 -->
+    <div class="control-panel">
+      <h2>配置选项</h2>
+      
+      <!-- Root 选项 -->
+      <div class="control-group">
+        <h3>1. root (根元素)</h3>
+        <label>
+          <input type="radio" name="root" value="null" checked> 
+          viewport (null) - 使用浏览器视口
+        </label>
+        <label>
+          <input type="radio" name="root" value="container"> 
+          .scroll-container - 使用滚动容器
+        </label>
+      </div>
+
+      <!-- RootMargin 选项 -->
+      <div class="control-group">
+        <h3>2. rootMargin (根边距)</h3>
+        <label>上边距 (px)</label>
+        <input type="range" id="margin-top" min="-100" max="100" value="0">
+        <div class="value-display">当前值: <span id="margin-top-value">0px</span></div>
+        
+        <label>右边距 (px)</label>
+        <input type="range" id="margin-right" min="-100" max="100" value="0">
+        <div class="value-display">当前值: <span id="margin-right-value">0px</span></div>
+        
+        <label>下边距 (px)</label>
+        <input type="range" id="margin-bottom" min="-100" max="100" value="0">
+        <div class="value-display">当前值: <span id="margin-bottom-value">0px</span></div>
+        
+        <label>左边距 (px)</label>
+        <input type="range" id="margin-left" min="-100" max="100" value="0">
+        <div class="value-display">当前值: <span id="margin-left-value">0px</span></div>
+        
+        <div class="value-display">
+          rootMargin: <strong id="rootmargin-display">"0px 0px 0px 0px"</strong>
+        </div>
+      </div>
+
+      <!-- Threshold 选项 -->
+      <div class="control-group">
+        <h3>3. threshold (阈值)</h3>
+        <label>预设选项</label>
+        <select id="threshold-preset">
+          <option value="0">0 - 刚接触时触发</option>
+          <option value="0.5" selected>0.5 - 50%可见时触发</option>
+          <option value="1.0">1.0 - 完全可见时触发</option>
+          <option value="custom">自定义多个阈值</option>
+        </select>
+        
+        <div id="custom-threshold" style="display: none; margin-top: 10px;">
+          <label>自定义阈值 (0-1之间，空格分隔)</label>
+          <input type="text" id="threshold-custom" value="0 0.25 0.5 0.75 1" style="width: 100%; padding: 5px;">
+          <div class="value-display">示例: 0 0.25 0.5 0.75 1</div>
+        </div>
+      </div>
+
+      <button onclick="applySettings()">应用配置</button>
+      <button onclick="resetSettings()" style="background-color: #666;">重置为默认值</button>
+    </div>
+
+    <!-- 演示区域 -->
+    <div class="demo-area">
+      <div class="scroll-container" id="scrollContainer">
+        <!-- Root边界可视化 -->
+        <div class="root-boundary" id="rootBoundary"></div>
+        
+        <!-- 阈值标记 -->
+        <div class="threshold-markers" id="thresholdMarkers"></div>
+        
+        <!-- 占位空间 -->
+        <div style="height: 200px; display: flex; align-items: center; justify-content: center; color: #999;">
+          ↓ 向下滚动查看效果 ↓
+        </div>
+        
+        <!-- 目标元素 -->
+        <div class="target-box" id="targetBox" data-ratio="0%">
+          目标元素
+        </div>
+        
+        <!-- 更多占位空间 -->
+        <div style="height: 600px; display: flex; align-items: center; justify-content: center; color: #999;">
+          继续滚动...
+        </div>
+      </div>
+
+      <!-- 信息面板 -->
+      <div class="info-panel">
+        <div class="info-item">
+          <span class="info-label">是否相交:</span>
+          <span class="info-value" id="isIntersecting">false</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">相交比例:</span>
+          <span class="info-value" id="intersectionRatio">0.00</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">目标元素边界:</span>
+          <span class="info-value" id="targetRect">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">根元素边界:</span>
+          <span class="info-value" id="rootRect">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">相交区域:</span>
+          <span class="info-value" id="intersectionRect">-</span>
+        </div>
+      </div>
+
+      <!-- 日志面板 -->
+      <div class="log-panel" id="logPanel">
+        <div style="font-weight: bold; margin-bottom: 10px;">事件日志</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let observer = null;
+    const targetBox = document.getElementById('targetBox');
+    const scrollContainer = document.getElementById('scrollContainer');
+    const logPanel = document.getElementById('logPanel');
+
+    // 初始化
+    function init() {
+      // 设置默认观察器
+      createObserver();
+      
+      // 绑定滑块事件
+      ['top', 'right', 'bottom', 'left'].forEach(side => {
+        const slider = document.getElementById(`margin-${side}`);
+        const display = document.getElementById(`margin-${side}-value`);
+        
+        slider.addEventListener('input', (e) => {
+          display.textContent = `${e.target.value}px`;
+          updateRootMarginDisplay();
+          updateRootBoundary();
+        });
+      });
+
+      // 绑定阈值选择
+      document.getElementById('threshold-preset').addEventListener('change', (e) => {
+        document.getElementById('custom-threshold').style.display = 
+          e.target.value === 'custom' ? 'block' : 'none';
+      });
+    }
+
+    // 创建观察器
+    function createObserver(options = {}) {
+      // 如果已有观察器，先断开连接
+      if (observer) {
+        observer.disconnect();
+      }
+
+      // 默认选项
+      const defaultOptions = {
+        root: null,
+        rootMargin: '0px 0px 0px 0px',
+        threshold: 0.5
+      };
+
+      // 合并选项
+      const finalOptions = { ...defaultOptions, ...options };
+
+      // 创建新观察器
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          updateInfo(entry);
+          
+          // 更新样式
+          if (entry.isIntersecting) {
+            entry.target.classList.add('intersecting');
+          } else {
+            entry.target.classList.remove('intersecting');
+          }
+
+          // 更新相交比例显示
+          const ratio = (entry.intersectionRatio * 100).toFixed(1);
+          entry.target.setAttribute('data-ratio', `${ratio}%`);
+
+          // 添加日志
+          addLog(`相交状态: ${entry.isIntersecting}, 比例: ${ratio}%`);
+        });
+      }, finalOptions);
+
+      // 开始观察
+      observer.observe(targetBox);
+
+      // 更新阈值标记
+      updateThresholdMarkers(finalOptions.threshold);
+    }
+
+    // 应用设置
+    function applySettings() {
+      const options = {};
+
+      // 获取 root 设置
+      const rootValue = document.querySelector('input[name="root"]:checked').value;
+      options.root = rootValue === 'container' ? scrollContainer : null;
+
+      // 获取 rootMargin 设置
+      const margins = ['top', 'right', 'bottom', 'left'].map(side => 
+        document.getElementById(`margin-${side}`).value + 'px'
+      );
+      options.rootMargin = margins.join(' ');
+
+      // 获取 threshold 设置
+      const thresholdPreset = document.getElementById('threshold-preset').value;
+      if (thresholdPreset === 'custom') {
+        const customValue = document.getElementById('threshold-custom').value;
+        const thresholds = customValue.split(' ').map(v => parseFloat(v)).filter(v => !isNaN(v));
+        options.threshold = thresholds.length > 0 ? thresholds : 0.5;
+      } else {
+        options.threshold = parseFloat(thresholdPreset);
+      }
+
+      // 创建新观察器
+      createObserver(options);
+      
+      // 更新边界可视化
+      updateRootBoundary();
+      
+      addLog('应用新配置: ' + JSON.stringify(options, null, 2));
+    }
+
+    // 重置设置
+    function resetSettings() {
+      // 重置所有控件
+      document.querySelector('input[name="root"][value="null"]').checked = true;
+      
+      ['top', 'right', 'bottom', 'left'].forEach(side => {
+        const slider = document.getElementById(`margin-${side}`);
+        slider.value = 0;
+        document.getElementById(`margin-${side}-value`).textContent = '0px';
+      });
+      
+      document.getElementById('threshold-preset').value = '0.5';
+      document.getElementById('custom-threshold').style.display = 'none';
+      
+      updateRootMarginDisplay();
+      applySettings();
+    }
+
+    // 更新 rootMargin 显示
+    function updateRootMarginDisplay() {
+      const margins = ['top', 'right', 'bottom', 'left'].map(side => 
+        document.getElementById(`margin-${side}`).value + 'px'
+      );
+      document.getElementById('rootmargin-display').textContent = `"${margins.join(' ')}"`;
+    }
+
+    // 更新根边界可视化
+    function updateRootBoundary() {
+      const boundary = document.getElementById('rootBoundary');
+      const margins = ['top', 'right', 'bottom', 'left'].map(side => 
+        parseInt(document.getElementById(`margin-${side}`).value)
+      );
+      
+      const isUsingContainer = document.querySelector('input[name="root"]:checked').value === 'container';
+      
+      if (isUsingContainer) {
+        boundary.style.top = `${-margins[0]}px`;
+        boundary.style.right = `${-margins[1]}px`;
+        boundary.style.bottom = `${-margins[2]}px`;
+        boundary.style.left = `${-margins[3]}px`;
+      } else {
+        // 视口模式下，边界相对于容器显示
+        const rect = scrollContainer.getBoundingClientRect();
+        boundary.style.top = `${-margins[0] - rect.top}px`;
+        boundary.style.height = `${window.innerHeight + margins[0] + margins[2]}px`;
+        boundary.style.left = `${-margins[3]}px`;
+        boundary.style.right = `${-margins[1]}px`;
+      }
+    }
+
+    // 更新阈值标记
+    function updateThresholdMarkers(threshold) {
+      const container = document.getElementById('thresholdMarkers');
+      container.innerHTML = '';
+      
+      const thresholds = Array.isArray(threshold) ? threshold : [threshold];
+      
+      thresholds.forEach(t => {
+        const line = document.createElement('div');
+        line.className = 'threshold-line';
+        line.setAttribute('data-threshold', `阈值: ${t}`);
+        
+        // 这里简化显示，实际位置会随滚动变化
+        line.style.top = '50%';
+        container.appendChild(line);
+      });
+    }
+
+    // 更新信息显示
+    function updateInfo(entry) {
+      document.getElementById('isIntersecting').textContent = entry.isIntersecting;
+      document.getElementById('intersectionRatio').textContent = entry.intersectionRatio.toFixed(4);
+      
+      // 格式化矩形信息
+      const formatRect = (rect) => {
+        return `[${rect.left.toFixed(0)}, ${rect.top.toFixed(0)}, ${rect.right.toFixed(0)}, ${rect.bottom.toFixed(0)}]`;
+      };
+      
+      document.getElementById('targetRect').textContent = formatRect(entry.boundingClientRect);
+      document.getElementById('rootRect').textContent = formatRect(entry.rootBounds || {left: 0, top: 0, right: 0, bottom: 0});
+      document.getElementById('intersectionRect').textContent = formatRect(entry.intersectionRect);
+    }
+
+    // 添加日志
+    function addLog(message) {
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">${time}</span>${message}`;
+      
+      logPanel.insertBefore(entry, logPanel.children[1]);
+      
+      // 限制日志数量
+      while (logPanel.children.length > 20) {
+        logPanel.removeChild(logPanel.lastChild);
+      }
+    }
+
+    // 初始化
+    init();
+  </script>
+</body>
+</html>
