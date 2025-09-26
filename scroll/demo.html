@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Scroll Component Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        /* 无限滚动组件容器样式 */
+        infinite-scroll {
+            display: block;
+            height: 600px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* 列表项样式 */
+        .list-item {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .list-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .list-item h3 {
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .list-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .list-item .meta {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #999;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* 控制按钮 */
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .controls button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .controls button:hover {
+            background-color: #2980b9;
+        }
+        
+        .controls button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        /* 状态信息 */
+        .status {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        /* 自定义加载提示 */
+        .custom-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            color: #3498db;
+        }
+        
+        .custom-loading .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #3498db;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 自定义结束提示 */
+        .custom-end {
+            padding: 30px;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        /* 自定义错误提示 */
+        .custom-error {
+            padding: 20px;
+            color: #e74c3c;
+            background-color: #fee;
+            border-radius: 4px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Infinite Scroll Component Demo</h1>
+        
+        <div class="status">
+            已加载: <span id="loaded-count">0</span> 项 | 
+            页码: <span id="current-page">0</span>
+        </div>
+        
+        <div class="controls">
+            <button id="reset-btn">重置列表</button>
+            <button id="simulate-error">模拟错误</button>
+            <button id="scroll-to-top">回到顶部</button>
+        </div>
+        
+        <infinite-scroll 
+            id="scroll-component"
+            threshold="100"
+            use-observer="true"
+            use-scroll="true">
+            
+            <!-- 列表内容容器 -->
+            <div id="list-content"></div>
+            
+            <!-- 自定义加载中插槽 -->
+            <div slot="loading" class="custom-loading">
+                <div class="spinner"></div>
+                <span>正在加载更多内容...</span>
+            </div>
+            
+            <!-- 自定义结束插槽 -->
+            <div slot="end" class="custom-end">
+                🎉 已经到底了，没有更多内容
+            </div>
+            
+            <!-- 自定义错误插槽 -->
+            <div slot="error" class="custom-error">
+                ❌ 加载失败，请稍后重试
+            </div>
+        </infinite-scroll>
+    </div>
+    
+    <!-- 引入组件 -->
+    <script src="infinite-scroll.js"></script>
+    
+    <script>
+        // 模拟数据配置
+        const PAGE_SIZE = 10;
+        const TOTAL_ITEMS = 50;
+        let currentPage = 0;
+        let loadedItems = 0;
+        
+        // 获取元素
+        const scrollComponent = document.getElementById('scroll-component');
+        const listContent = document.getElementById('list-content');
+        const loadedCountEl = document.getElementById('loaded-count');
+        const currentPageEl = document.getElementById('current-page');
+        
+        // 生成模拟数据
+        function generateMockData(page, pageSize) {
+            const items = [];
+            const start = page * pageSize;
+            const end = Math.min(start + pageSize, TOTAL_ITEMS);
+            
+            for (let i = start; i < end; i++) {
+                items.push({
+                    id: i + 1,
+                    title: `文章标题 ${i + 1}`,
+                    content: `这是第 ${i + 1} 篇文章的内容摘要。这里包含了一些有趣的信息，让列表看起来更加真实。`,
+                    author: ['张三', '李四', '王五'][Math.floor(Math.random() * 3)],
+                    time: new Date(Date.now() - Math.random() * 86400000).toLocaleString()
+                });
+            }
+            
+            return items;
+        }
+        
+        // 渲染列表项
+        function renderItems(items) {
+            const fragment = document.createDocumentFragment();
+            
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <h3>${item.title}</h3>
+                    <p>${item.content}</p>
+                    <div class="meta">
+                        <span>作者: ${item.author}</span> | 
+                        <span>${item.time}</span>
+                    </div>
+                `;
+                fragment.appendChild(div);
+            });
+            
+            listContent.appendChild(fragment);
+        }
+        
+        // 加载更多数据
+        async function loadMore() {
+            // 设置加载状态
+            scrollComponent.loading = true;
+            
+            try {
+                // 模拟网络延迟
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 模拟随机错误（10%概率）
+                if (Math.random() < 0.1 && currentPage > 0) {
+                    throw new Error('Network error');
+                }
+                
+                // 获取数据
+                const items = generateMockData(currentPage, PAGE_SIZE);
+                
+                if (items.length > 0) {
+                    renderItems(items);
+                    currentPage++;
+                    loadedItems += items.length;
+                    
+                    // 更新状态显示
+                    loadedCountEl.textContent = loadedItems;
+                    currentPageEl.textContent = currentPage;
+                    
+                    // 检查是否还有更多
+                    if (loadedItems >= TOTAL_ITEMS) {
+                        scrollComponent.hasMore = false;
+                    }
+                }
+                
+                // 隐藏错误提示（如果有）
+                scrollComponent.hideError();
+                
+            } catch (error) {
+                console.error('加载失败:', error);
+                scrollComponent.showError();
+            } finally {
+                // 清除加载状态
+                scrollComponent.loading = false;
+            }
+        }
+        
+        // 重置列表
+        function resetList() {
+            listContent.innerHTML = '';
+            currentPage = 0;
+            loadedItems = 0;
+            loadedCountEl.textContent = '0';
+            currentPageEl.textContent = '0';
+            scrollComponent.reset();
+            
+            // 加载第一页
+            loadMore();
+        }
+        
+        // 监听加载事件
+        scrollComponent.addEventListener('load', (e) => {
+            console.log('触发加载事件:', e.detail);
+            loadMore();
+        });
+        
+        // 绑定按钮事件
+        document.getElementById('reset-btn').addEventListener('click', resetList);
+        
+        document.getElementById('simulate-error').addEventListener('click', () => {
+            scrollComponent.showError();
+        });
+        
+        document.getElementById('scroll-to-top').addEventListener('click', () => {
+            scrollComponent.scrollToTop();
+        });
+        
+        // 初始加载
+        loadMore();
+    </script>
+</body>
+</html>
