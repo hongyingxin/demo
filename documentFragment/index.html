@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <ul id="list"></ul>
+</body>
+<script>
+  /* DocumentFragment 是 DOM 操作中的一种优化方式，它不会直接渲染到 DOM 中，而是先缓存起来，最后一次性渲染到 DOM 中，从而提高性能。
+  它可以当作一个轻量级的 document 使用，就像标准的 document 一样。
+  与 document 的最大区别是：它的变化不会触发浏览器的重排和重绘，且不会对性能产生影响。
+   */
+  const list = document.querySelector('#list');
+  // 使用createDocumentFragment方法创建文档片段
+  // const fragment = document.createDocumentFragment();
+  // 使用new DocumentFragment()方法创建文档片段
+  const fragment = new DocumentFragment();
+  const fruits = ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew', 'kiwi', 'lemon'];
+  for (let i = 0; i < fruits.length; i++) {
+    const li = document.createElement('li');
+    li.textContent = `Item ${fruits[i]}`;
+    fragment.appendChild(li);
+  }
+  list.appendChild(fragment);
+
+</script>
+</html>
