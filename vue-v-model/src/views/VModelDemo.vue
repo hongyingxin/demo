@@ -17,6 +17,11 @@
       <ChildOptions v-model="count" />
     </div>
     
+    <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd">
+      <h3>使用 defineModel 带参数名的组件：</h3>
+      <ChildParam v-model:myValue="count" />
+    </div>
+
     <div style="margin-top: 20px">
       <button @click="count = 0">Reset Count</button>
     </div>
@@ -27,6 +32,7 @@
 import Child from '../components/Child.vue'
 import ChildTraditional from '../components/ChildTraditional.vue'
 import ChildOptions from '../components/ChildOptions.vue'
+import ChildParam from '../components/ChildParam.vue'
 import { ref } from 'vue'
 
 const count = ref(0)
