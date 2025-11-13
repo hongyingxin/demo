@@ -29,10 +29,10 @@
 </template>
 
 <script setup>
-import Child from '../components/Child.vue'
-import ChildTraditional from '../components/ChildTraditional.vue'
-import ChildOptions from '../components/ChildOptions.vue'
-import ChildParam from '../components/ChildParam.vue'
+import Child from '../components/VModel/Child.vue'
+import ChildTraditional from '../components/VModel/ChildTraditional.vue'
+import ChildOptions from '../components/VModel/ChildOptions.vue'
+import ChildParam from '../components/VModel/ChildParam.vue'
 import { ref } from 'vue'
 
 const count = ref(0)
