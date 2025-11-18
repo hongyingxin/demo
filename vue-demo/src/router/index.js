@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import VModelDemo from '../views/VModelDemo.vue'
+import HFunctionDemo from '../views/HFunctionDemo.vue'
 
 const routes = [
   {
@@ -14,6 +15,12 @@ const routes = [
     name: 'VModelDemo',
     component: VModelDemo,
     meta: { title: 'V-Model 演示' }
+  },
+  {
+    path: '/h-function-demo',
+    name: 'HFunctionDemo',
+    component: HFunctionDemo,
+    meta: { title: 'h 函数练习' }
   }
 ]
 

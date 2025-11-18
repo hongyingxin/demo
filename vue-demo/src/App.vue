@@ -19,6 +19,13 @@
           >
             V-Model 演示
           </router-link>
+          <router-link 
+            to="/h-function-demo" 
+            style="color: white; text-decoration: none; font-weight: 500; transition: opacity 0.3s;"
+            active-class="active-link"
+          >
+            h 函数练习
+          </router-link>
         </div>
       </div>
     </nav>
