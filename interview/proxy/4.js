@@ -6,6 +6,7 @@
  * 当 proxyObj.nestedObj.foo = 'baz' 执行时
  * JavaScript引擎会把这个操作分解成两步，第一步获取 nestedObj 对象，第二步设置 foo 属性
  * 即const temp = proxyObj.nestedObj ，然后 temp.foo = 'baz'
+ * 注意的一点：这里Reflect.get的作用是获取对象属性的原始值，它返回的是原始值，而不是Proxy包装的对象
  */
 
 const obj = {
