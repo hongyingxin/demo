@@ -117,3 +117,47 @@ gen.throw(new Error('error')); // Uncaught Error: error
 
 gen.return(2); // let result = return 2 => 2
 // 相当于将let result = yield x + y; 替换成 let result = return 2;
+
+/**
+ * yield* 表达式，用于在Generator函数内部，调用另一个Generator函数。
+ * 从语法角度看，如果yield表达式后面跟的是一个遍历器对象（即Generator函数），需要在yield表达式后面加上星号，表明它返回的是一个遍历器对象。这被称为yield*表达式。
+ */
+
+function* bar() {
+  yield 'x';
+  yield* foo();
+  yield 'y';
+}
+
+// 等同于
+function* bar() {
+  yield 'x';
+  yield 'a';
+  yield 'b';
+  yield 'y';
+}
+
+// 等同于
+function* bar() {
+  yield 'x';
+  for (let v of foo()) {
+    yield v;
+  }
+  yield 'y';
+}
+
+for (let v of bar()){
+  console.log(v);
+}
+// x a b y
+
+/**
+ * Generator函数的this
+ */
+
+function* fn() {
+  this.a = 1;
+}
+
+const obj = new fn();
+console.log(obj.a);
