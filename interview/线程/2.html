@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>requestIdleCallback2 演示</title>
+    <style>
+      body {
+        font-family: "Open Sans", "Lucida Grande", "Arial", sans-serif;
+        font-size: 16px;
+      }
+
+      #logBox {
+        margin-top: 16px;
+        width: 400px;
+        height: 500px;
+        border-radius: 6px;
+        border: 1px solid black;
+        box-shadow: 4px 4px 2px black;
+      }
+
+      .logHeader {
+        margin: 0;
+        padding: 0 6px 4px;
+        height: 22px;
+        background-color: lightblue;
+        border-bottom: 1px solid black;
+        border-radius: 6px 6px 0 0;
+      }
+
+      #log {
+        font: 12px "Courier", monospace;
+        padding: 6px;
+        overflow: auto;
+        overflow-y: scroll;
+        width: 388px;
+        height: 460px;
+      }
+
+      #container {
+        width: 400px;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid black;
+        box-shadow: 4px 4px 2px black;
+        display: block;
+        overflow: auto;
+      }
+
+      .label {
+        display: inline-block;
+      }
+
+      .counter {
+        text-align: right;
+        padding-top: 4px;
+        float: right;
+      }
+
+      .button {
+        padding-top: 2px;
+        padding-bottom: 4px;
+        width: 100px;
+        display: inline-block;
+        float: left;
+        border: 1px solid black;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 0;
+        color: white;
+        background-color: darkgreen;
+      }
+
+      #progress {
+        width: 100%;
+        padding-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <p>使用 <code>setTimeout()</code> 方法的后台任务协作调度演示。</p>
+
+    <div id="container">
+      <div class="label">解码量子丝极谱发射中...</div>
+      <progress id="progress" value="0"></progress>
+      <div class="button" id="startButton">开始</div>
+      <div class="label counter">
+        任务 <span id="currentTaskNumber">0</span> / <span id="totalTaskCount">0</span>
+      </div>
+      <div class="label" style="width: 100%; margin-top: 10px; color: #5cb85c; font-weight: bold;">
+        执行时间: <span id="executionTime">0</span> ms (setTimeout)
+      </div>
+    </div>
+
+    <div id="logBox">
+      <div class="logHeader">记录</div>
+      <div id="log"></div>
+    </div>
+
+    <script>
+      // ============ 全局变量定义 ============
+      // 任务队列，存储所有待执行的任务
+      const taskList = [];
+      // 任务总数
+      let totalTaskCount = 0;
+      // 当前正在执行的任务编号
+      let currentTaskNumber = 0;
+      // requestIdleCallback 返回的句柄，用于取消回调
+      let taskHandle = null;
+      // 计时器：记录任务开始和结束时间
+      let startTime = 0;
+      let endTime = 0;
+      
+      // DOM 元素引用
+      const totalTaskCountElem = document.getElementById("totalTaskCount");
+      const currentTaskNumberElem = document.getElementById("currentTaskNumber");
+      const progressBarElem = document.getElementById("progress");
+      const startButtonElem = document.getElementById("startButton");
+      const logElem = document.getElementById("log");
+      const executionTimeElem = document.getElementById("executionTime");
+      
+      // 文档片段，用于批量添加日志到 DOM，避免频繁操作 DOM 造成性能问题
+      let logFragment = null;
+      // 标记是否已经调度了状态刷新，防止重复调度
+      let statusRefreshScheduled = false;
+
+      // ============ requestIdleCallback Polyfill ============
+      // 为不支持 requestIdleCallback 的浏览器提供降级方案
+      // requestIdleCallback 是后台任务协作调度 API，允许在浏览器空闲时执行低优先级任务
+      requestIdleCallback =
+        requestIdleCallback ||
+        ((handler) => {
+          const startTime = Date.now();
+          // 使用 setTimeout 模拟空闲回调，延迟 1ms 执行
+          return setTimeout(() => {
+            handler({
+              // didTimeout: 表示是否因为超时而执行（polyfill 中总是 false）
+              didTimeout: false,
+              // timeRemaining(): 返回当前空闲周期剩余的时间（毫秒）
+              // 浏览器规定上限为 50ms，这里模拟这个行为
+              timeRemaining() {
+                return Math.max(0, 50.0 - (Date.now() - startTime));
+              },
+            });
+          }, 1);
+        });
+
+      // ============ cancelIdleCallback Polyfill ============
+      // 用于取消之前通过 requestIdleCallback 调度的回调
+      cancelIdleCallback =
+        cancelIdleCallback ||
+        ((id) => {
+          clearTimeout(id);
+        });
+
+      // ============ 任务入队函数 ============
+      /**
+       * 将任务添加到队列中
+       * @param {Function} taskHandler - 任务处理函数
+       * @param {Object} taskData - 传递给任务处理函数的数据
+       */
+      function enqueueTask(taskHandler, taskData) {
+        // 将任务对象推入任务队列
+        taskList.push({
+          handler: taskHandler,  // 任务执行函数
+          data: taskData,        // 任务数据
+        });
+
+        totalTaskCount++;
+
+        // 如果当前没有正在运行的空闲回调，则启动一个
+        if (!taskHandle) {
+          // 使用 setTimeout 立即执行所有任务（一次性执行完）
+          taskHandle = setTimeout(() => {
+            runTaskQueue();
+          }, 0);
+        }
+
+        // 调度界面状态更新
+        scheduleStatusRefresh();
+      }
+
+      // ============ 任务队列执行函数 ============
+      /**
+       * 在浏览器空闲时执行任务队列
+       * @param {IdleDeadline} deadline - 提供剩余空闲时间信息的对象
+       */
+      function runTaskQueue() {
+        // setTimeout 版本：一次性执行所有任务（会阻塞主线程）
+        while (taskList.length) {
+          // 从队列头部取出一个任务
+          const task = taskList.shift();
+          currentTaskNumber++;
+
+          // 执行任务处理函数
+          task.handler(task.data);
+          // 调度界面更新（通过 requestAnimationFrame）
+          scheduleStatusRefresh();
+        }
+
+        // 所有任务执行完毕，清除句柄
+        taskHandle = 0;
+        // 记录结束时间并计算总耗时
+        endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+        executionTimeElem.textContent = duration;
+        log(`✅ 所有任务完成！总耗时: ${duration} ms (一次性执行完所有任务)`);
+      }
+
+      // ============ 调度状态刷新 ============
+      /**
+       * 调度界面状态更新
+       * 使用 requestAnimationFrame 确保 DOM 更新在下一帧渲染时执行
+       * 避免在空闲回调中直接操作 DOM（这是最佳实践）
+       */
+      function scheduleStatusRefresh() {
+        if (!statusRefreshScheduled) {
+          // requestAnimationFrame 会在浏览器下次重绘之前执行回调
+          // 这样可以确保 DOM 更新与浏览器渲染同步，避免强制重排
+          requestAnimationFrame(updateDisplay);
+          statusRefreshScheduled = true;
+        }
+      }
+
+      // ============ 更新界面显示 ============
+      /**
+       * 更新进度条、任务计数器和日志显示
+       * 该函数在 requestAnimationFrame 中调用，确保与浏览器渲染同步
+       */
+      function updateDisplay() {
+        // 检查日志是否滚动到底部（用于后续保持滚动位置）
+        const scrolledToEnd =
+          logElem.scrollHeight - logElem.clientHeight <= logElem.scrollTop + 1;
+
+        // 更新任务计数和进度条
+        if (totalTaskCount) {
+          // 只在数值变化时更新 DOM，避免不必要的重排
+          if (progressBarElem.max !== totalTaskCount) {
+            totalTaskCountElem.textContent = totalTaskCount;
+            progressBarElem.max = totalTaskCount;
+          }
+
+          if (progressBarElem.value !== currentTaskNumber) {
+            currentTaskNumberElem.textContent = currentTaskNumber;
+            progressBarElem.value = currentTaskNumber;
+          }
+        }
+
+        // 批量添加日志内容到 DOM
+        // 使用 DocumentFragment 可以减少 DOM 操作次数，提高性能
+        if (logFragment) {
+          logElem.appendChild(logFragment);
+          logFragment = null;
+        }
+
+        // 如果之前滚动到底部，保持这个状态
+        if (scrolledToEnd) {
+          logElem.scrollTop = logElem.scrollHeight - logElem.clientHeight;
+        }
+
+        // 重置调度标记，允许下次调度
+        statusRefreshScheduled = false;
+      }
+
+      // ============ 日志记录函数 ============
+      /**
+       * 添加日志文本到文档片段
+       * 不直接操作 DOM，而是先添加到 DocumentFragment，由 updateDisplay 批量更新
+       * @param {string} text - 要记录的日志文本
+       */
+      function log(text) {
+        // 如果文档片段不存在，创建一个新的
+        // DocumentFragment 是轻量级的 DOM 容器，不会引起页面重排
+        if (!logFragment) {
+          logFragment = document.createDocumentFragment();
+        }
+
+        // 创建日志条目元素
+        const el = document.createElement("div");
+        el.textContent = text;
+        // 添加到文档片段（不会触发 DOM 重排）
+        logFragment.appendChild(el);
+      }
+
+      // ============ 任务处理器 ============
+      /**
+       * 具体的任务处理函数
+       * 这里只是简单地输出日志，实际应用中可以执行任何非高优先级的任务
+       * @param {Object} data - 任务数据，包含 count 和 text 属性
+       */
+      function logTaskHandler(data) {
+        log(`运行任务 #${currentTaskNumber}`);
+
+        // 模拟任务执行：输出指定数量的日志
+        for (let i = 0; i < data.count; i += 1) {
+          log(`${(i + 1).toString()}. ${data.text}`);
+        }
+      }
+
+      // ============ 工具函数 ============
+      /**
+       * 生成指定范围内的随机整数（包含边界值）
+       * @param {number} min - 最小值
+       * @param {number} max - 最大值
+       * @returns {number} 随机整数
+       */
+      function getRandomIntInclusive(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      // ============ 主程序入口 ============
+      /**
+       * 创建并调度大量任务的主函数
+       * 演示如何使用 requestIdleCallback 处理大量非高优先级任务
+       */
+      function decodeTechnoStuff() {
+        // 重置计数器和界面
+        totalTaskCount = 0;
+        currentTaskNumber = 0;
+        updateDisplay();
+        
+        // 记录开始时间
+        startTime = performance.now();
+        executionTimeElem.textContent = "0";
+
+        // 随机生成 100-200 个任务
+        // const n = getRandomIntInclusive(100, 200);
+        const n = 200
+
+        // 创建任务并加入队列
+        for (let i = 0; i < n; i++) {
+          const taskData = {
+            // count: getRandomIntInclusive(75, 150),  // 每个任务输出 75-150 行日志
+            count: 150,
+            text: `该文本来自任务 ${i + 1}/${n}`,
+          };
+
+          // 将任务加入队列，等待浏览器空闲时执行
+          enqueueTask(logTaskHandler, taskData);
+        }
+      }
+
+      // 绑定开始按钮的点击事件
+      document
+        .getElementById("startButton")
+        .addEventListener("click", decodeTechnoStuff, false);
+
+      // ============ requestIdleCallback 核心概念总结 ============
+      // 1. 在浏览器空闲时执行低优先级任务，不阻塞主线程
+      // 2. 通过 deadline.timeRemaining() 获取剩余空闲时间
+      // 3. 配合 timeout 选项确保任务不会无限期等待
+      // 4. 避免在空闲回调中直接操作 DOM，应使用 requestAnimationFrame
+      // 5. 适用场景：数据分析、日志处理、预加载资源等非紧急任务
+    </script>
+  </body>
+</html>
