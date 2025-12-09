@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .output-group {
+            margin-top: 30px;
+        }
+
+        .output-box {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            min-height: 150px;
+            background: #f9f9f9;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #fee;
+            border-color: #e74c3c;
+        }
+
+        .success {
+            color: #27ae60;
+            background: #efe;
+            border-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI助手</h1>
+        
+        <div class="input-group">
+            <label for="input">请输入您的问题：</label>
+            <textarea id="input" placeholder="例如：解释一下人工智能的工作原理"></textarea>
+        </div>
+
+        <button id="submitBtn" onclick="sendRequest()">发送请求</button>
+
+        <div class="output-group">
+            <label for="output">AI回复：</label>
+            <div id="output" class="output-box">等待您的输入...</div>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('input');
+        const output = document.getElementById('output');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // 回车键发送（Ctrl+Enter）
+        input.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                sendRequest();
+            }
+        });
+
+        async function sendRequest() {
+            const message = input.value.trim();
+            
+            if (!message) {
+                output.textContent = '请输入问题后再发送！';
+                output.className = 'output-box error';
+                return;
+            }
+
+            // 禁用按钮，显示加载状态
+            submitBtn.disabled = true;
+            submitBtn.textContent = '发送中...';
+            output.textContent = '正在思考中，请稍候...';
+            output.className = 'output-box loading';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    output.textContent = data.response || '未收到回复';
+                    output.className = 'output-box success';
+                } else {
+                    output.textContent = `错误: ${data.error}${data.details ? '\n' + data.details : ''}`;
+                    output.className = 'output-box error';
+                }
+            } catch (error) {
+                output.textContent = `网络错误: ${error.message}`;
+                output.className = 'output-box error';
+            } finally {
+                // 恢复按钮状态
+                submitBtn.disabled = false;
+                submitBtn.textContent = '发送请求';
+            }
+        }
+    </script>
+</body>
+</html>
+
