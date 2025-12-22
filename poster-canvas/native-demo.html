@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原生 DOM 转 Canvas 实现 - 无需插件</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .panel h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .image-upload {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f7fafc;
+        }
+
+        .image-upload:hover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .image-upload input {
+            display: none;
+        }
+
+        /* 海报内容样式 */
+        #posterContent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 40px;
+            color: white;
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #posterImage {
+            width: 100%;
+            height: 250px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #posterImage img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #posterTitle {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #posterSubtitle {
+            font-size: 1.3em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .poster-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(255,255,255,0.2);
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            width: 100%;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* 预览区域 */
+        #previewArea {
+            min-height: 200px;
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .loading {
+            font-size: 1.5em;
+            color: #667eea;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-box {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-box h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .info-box ul {
+            list-style: none;
+            color: #4a5568;
+        }
+
+        .info-box li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box li:before {
+            content: "✓";
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        .tech-stack {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+
+        .tech-stack h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tech-tag {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 原生 DOM 转 Canvas</h1>
+            <p>不使用任何第三方插件，纯原生 JavaScript 实现</p>
+            <span class="badge">零依赖 · 轻量级</span>
+        </div>
+
+        <div class="main-content">
+            <!-- 左侧：编辑区 -->
+            <div class="panel">
+                <h2>📝 编辑海报</h2>
+
+                <div class="form-group">
+                    <label for="titleInput">主标题</label>
+                    <input type="text" id="titleInput" placeholder="输入主标题" 
+                           value="原生技术实现" oninput="updatePoster()">
+                </div>
+
+                <div class="form-group">
+                    <label for="subtitleInput">副标题</label>
+                    <input type="text" id="subtitleInput" placeholder="输入副标题" 
+                           value="DOM → Canvas → Image" oninput="updatePoster()">
+                </div>
+
+                <div class="form-group">
+                    <label for="watermarkInput">水印文本</label>
+                    <input type="text" id="watermarkInput" placeholder="输入水印文本" 
+                           value="@YourBrand">
+                </div>
+
+                <div class="form-group">
+                    <label for="watermarkType">水印类型</label>
+                    <select id="watermarkType">
+                        <option value="none">无水印</option>
+                        <option value="single">单个水印</option>
+                        <option value="tiled" selected>平铺水印</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="watermarkPosition">水印位置（单个水印）</label>
+                    <select id="watermarkPosition">
+                        <option value="bottom-right" selected>右下角</option>
+                        <option value="bottom-left">左下角</option>
+                        <option value="top-right">右上角</option>
+                        <option value="top-left">左上角</option>
+                        <option value="center">居中</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>上传图片</label>
+                    <div class="image-upload" onclick="document.getElementById('imageInput').click()">
+                        <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
+                        <div>📸 点击上传图片</div>
+                        <div style="font-size: 0.9em; color: #718096; margin-top: 10px;">支持 JPG、PNG、GIF</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="generatePoster()">
+                    🎨 生成海报
+                </button>
+
+                <button class="btn btn-success" id="downloadBtn" onclick="downloadPoster()" disabled>
+                    📥 下载海报
+                </button>
+
+                <div class="info-box">
+                    <h3>🚀 技术特点</h3>
+                    <ul>
+                        <li>不依赖 html2canvas</li>
+                        <li>使用 SVG foreignObject</li>
+                        <li>原生 Canvas API</li>
+                        <li>支持高清输出</li>
+                        <li>灵活的水印系统</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 右侧：海报预览 -->
+            <div class="panel">
+                <h2>👁️ 海报预览</h2>
+                
+                <!-- 原始 DOM 海报 -->
+                <div id="posterContent">
+                    <div id="posterImage">
+                        <div style="font-size: 3em; opacity: 0.5;">🖼️</div>
+                    </div>
+                    <h1 id="posterTitle">原生技术实现</h1>
+                    <div id="posterSubtitle">DOM → Canvas → Image</div>
+                    <div class="poster-footer">
+                        <div>Made with ❤️ by Native JavaScript</div>
+                        <div style="margin-top: 10px;">No Dependencies · Pure Implementation</div>
+                    </div>
+                </div>
+
+                <div class="tech-stack">
+                    <h3>🔧 技术栈</h3>
+                    <div class="tech-tags">
+                        <span class="tech-tag">SVG</span>
+                        <span class="tech-tag">Canvas API</span>
+                        <span class="tech-tag">foreignObject</span>
+                        <span class="tech-tag">XMLSerializer</span>
+                        <span class="tech-tag">Data URL</span>
+                    </div>
+                </div>
+
+                <!-- 生成的图片预览 -->
+                <div style="margin-top: 30px;">
+                    <h3 style="color: #2d3748; margin-bottom: 15px;">生成结果</h3>
+                    <div id="previewArea">
+                        <div style="text-align: center; color: #718096;">
+                            <div style="font-size: 3em; margin-bottom: 15px;">🎯</div>
+                            <div>点击"生成海报"按钮查看结果</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="dom-to-canvas.js"></script>
+    <script>
+        let generatedCanvas = null;
+
+        /**
+         * 实时更新海报内容
+         */
+        function updatePoster() {
+            const title = document.getElementById('titleInput').value;
+            const subtitle = document.getElementById('subtitleInput').value;
+
+            document.getElementById('posterTitle').textContent = title;
+            document.getElementById('posterSubtitle').textContent = subtitle;
+        }
+
+        /**
+         * 处理图片上传
+         */
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('请上传图片文件！');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('图片大小不能超过 5MB！');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+
+                const posterImage = document.getElementById('posterImage');
+                posterImage.innerHTML = '';
+                posterImage.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * 生成海报 - 使用原生实现
+         */
+        async function generatePoster() {
+            const posterContent = document.getElementById('posterContent');
+            const previewArea = document.getElementById('previewArea');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            // 显示加载状态
+            previewArea.innerHTML = '<div class="loading">🎨 正在生成海报...</div>';
+            downloadBtn.disabled = true;
+
+            try {
+                const startTime = performance.now();
+
+                // 使用原生方法将 DOM 转换为 Canvas
+                let canvas = await domToCanvas(posterContent, {
+                    scale: 2,                    // 2倍分辨率，提高清晰度
+                    backgroundColor: '#ffffff',   // 白色背景
+                    includeCss: true,            // 包含 CSS 样式
+                    quality: 1.0
+                });
+
+                // 获取水印配置
+                const watermarkType = document.getElementById('watermarkType').value;
+                const watermarkText = document.getElementById('watermarkInput').value;
+                const watermarkPosition = document.getElementById('watermarkPosition').value;
+
+                // 添加水印
+                if (watermarkType === 'single' && watermarkText) {
+                    canvas = addWatermarkToCanvas(canvas, watermarkText, {
+                        fontSize: 20,
+                        color: 'rgba(255, 255, 255, 0.3)',
+                        rotation: -15,
+                        position: watermarkPosition
+                    });
+                    console.log('✓ 已添加单个水印');
+                } else if (watermarkType === 'tiled' && watermarkText) {
+                    canvas = addTiledWatermarkToCanvas(canvas, watermarkText, {
+                        fontSize: 24,
+                        color: 'rgba(255, 255, 255, 0.15)',
+                        rotation: -30,
+                        spacing: 200
+                    });
+                    console.log('✓ 已添加平铺水印');
+                }
+
+                // 保存生成的 canvas
+                generatedCanvas = canvas;
+
+                // 转换为图片并显示
+                const imgData = canvasToImage(canvas, 'image/png', 1.0);
+                const endTime = performance.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+                previewArea.innerHTML = `
+                    <img src="${imgData}" alt="生成的海报" class="preview-image">
+                    <div style="text-align: center; margin-top: 20px; color: #4a5568;">
+                        <p style="font-size: 1.1em; font-weight: 600; color: #48bb78;">✅ 海报生成成功！</p>
+                        <p style="margin-top: 10px;">分辨率: ${canvas.width} × ${canvas.height}</p>
+                        <p style="margin-top: 5px;">生成时间: ${duration}秒</p>
+                        <p style="margin-top: 5px;">水印: ${watermarkType === 'none' ? '无' : watermarkType === 'single' ? '单个' : '平铺'}</p>
+                        <p style="margin-top: 5px; font-weight: 600; color: #667eea;">🎯 纯原生实现，无需插件</p>
+                    </div>
+                `;
+
+                // 启用下载按钮
+                downloadBtn.disabled = false;
+
+                console.log('✅ 海报生成成功！', {
+                    width: canvas.width,
+                    height: canvas.height,
+                    duration: duration + 's',
+                    size: Math.round(imgData.length / 1024) + ' KB'
+                });
+
+            } catch (error) {
+                console.error('❌ 生成海报失败:', error);
+                previewArea.innerHTML = `
+                    <div style="text-align: center; color: #e53e3e; padding: 40px;">
+                        <div style="font-size: 2em; margin-bottom: 15px;">❌</div>
+                        <div style="font-weight: 600; margin-bottom: 10px;">生成失败</div>
+                        <div style="font-size: 0.9em;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * 下载生成的海报
+         */
+        async function downloadPoster() {
+            if (!generatedCanvas) {
+                alert('请先生成海报！');
+                return;
+            }
+
+            try {
+                const timestamp = new Date().getTime();
+                const filename = `poster-native-${timestamp}.png`;
+                
+                await downloadCanvas(generatedCanvas, filename, 'image/png', 1.0);
+                
+                console.log('✅ 海报下载成功！');
+            } catch (error) {
+                console.error('❌ 下载失败:', error);
+                alert('下载失败，请重试！');
+            }
+        }
+
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎨 原生 DOM 转 Canvas 演示已加载');
+            console.log('📦 技术栈: SVG foreignObject + Canvas API');
+            console.log('✨ 零依赖，纯原生实现');
+        });
+    </script>
+</body>
+</html>
+

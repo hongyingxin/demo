@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原生实现测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .test-section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        .test-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .result img {
+            max-width: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .success { color: #48bb78; }
+        .error { color: #e53e3e; }
+        .info { color: #4299e1; }
+    </style>
+</head>
+<body>
+    <h1>🧪 原生 DOM 转 Canvas 测试</h1>
+
+    <!-- 测试1：基础转换 -->
+    <div class="test-section">
+        <h2>测试 1: 基础 DOM 转 Canvas</h2>
+        <div class="test-content" id="test1">
+            <h1>Hello Canvas!</h1>
+            <p>这是一个测试内容。</p>
+            <p style="font-size: 1.5em;">支持中文 ✓</p>
+        </div>
+        <button onclick="runTest1()">运行测试 1</button>
+        <div id="result1" class="result"></div>
+    </div>
+
+    <!-- 测试2：带样式的元素 -->
+    <div class="test-section">
+        <h2>测试 2: 复杂样式</h2>
+        <div class="test-content" id="test2">
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
+                    <h3>卡片 1</h3>
+                    <p>Flexbox 布局</p>
+                </div>
+                <div style="flex: 1; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
+                    <h3>卡片 2</h3>
+                    <p>圆角边框</p>
+                </div>
+            </div>
+        </div>
+        <button onclick="runTest2()">运行测试 2</button>
+        <div id="result2" class="result"></div>
+    </div>
+
+    <!-- 测试3：添加水印 -->
+    <div class="test-section">
+        <h2>测试 3: 水印功能</h2>
+        <div class="test-content" id="test3">
+            <h1>水印测试</h1>
+            <p>这张图片将会添加水印</p>
+            <p>测试单个水印和平铺水印</p>
+        </div>
+        <button onclick="runTest3Single()">单个水印</button>
+        <button onclick="runTest3Tiled()">平铺水印</button>
+        <div id="result3" class="result"></div>
+    </div>
+
+    <!-- 测试4：下载功能 -->
+    <div class="test-section">
+        <h2>测试 4: 下载功能</h2>
+        <div class="test-content" id="test4">
+            <h1>下载测试</h1>
+            <p>生成并下载为 PNG 图片</p>
+        </div>
+        <button onclick="runTest4()">生成并下载</button>
+        <div id="result4" class="result"></div>
+    </div>
+
+    <!-- 测试5：不同格式 -->
+    <div class="test-section">
+        <h2>测试 5: 不同图片格式</h2>
+        <div class="test-content" id="test5">
+            <h1>格式测试</h1>
+            <p>PNG / JPEG / WebP</p>
+        </div>
+        <button onclick="runTest5('image/png')">PNG</button>
+        <button onclick="runTest5('image/jpeg')">JPEG</button>
+        <button onclick="runTest5('image/webp')">WebP</button>
+        <div id="result5" class="result"></div>
+    </div>
+
+    <!-- 日志区域 -->
+    <div class="test-section">
+        <h2>📊 测试日志</h2>
+        <div id="testLog" class="log"></div>
+        <button onclick="clearLog()" style="background: #e53e3e; margin-top: 10px;">清空日志</button>
+    </div>
+
+    <script src="dom-to-canvas.js"></script>
+    <script>
+        // 日志函数
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<div class="log-entry ${colorClass}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+            log('日志已清空', 'info');
+        }
+
+        // 测试 1: 基础转换
+        async function runTest1() {
+            log('开始测试 1: 基础 DOM 转 Canvas', 'info');
+            const result = document.getElementById('result1');
+            result.innerHTML = '<p>生成中...</p>';
+
+            try {
+                const startTime = performance.now();
+                const element = document.getElementById('test1');
+                const canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+
+                const imgData = canvasToImage(canvas);
+                result.innerHTML = `
+                    <p>✅ 生成成功！</p>
+                    <p>尺寸: ${canvas.width}x${canvas.height}，耗时: ${duration}ms</p>
+                    <img src="${imgData}" alt="测试结果">
+                `;
+                log(`测试 1 成功：${canvas.width}x${canvas.height}，耗时 ${duration}ms`, 'success');
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ 失败: ${error.message}</p>`;
+                log(`测试 1 失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试 2: 复杂样式
+        async function runTest2() {
+            log('开始测试 2: 复杂样式', 'info');
+            const result = document.getElementById('result2');
+            result.innerHTML = '<p>生成中...</p>';
+
+            try {
+                const startTime = performance.now();
+                const element = document.getElementById('test2');
+                const canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    includeCss: true
+                });
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+
+                const imgData = canvasToImage(canvas);
+                result.innerHTML = `
+                    <p>✅ 生成成功！</p>
+                    <p>尺寸: ${canvas.width}x${canvas.height}，耗时: ${duration}ms</p>
+                    <img src="${imgData}" alt="测试结果">
+                `;
+                log(`测试 2 成功：复杂样式渲染完成，耗时 ${duration}ms`, 'success');
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ 失败: ${error.message}</p>`;
+                log(`测试 2 失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试 3: 单个水印
+        async function runTest3Single() {
+            log('开始测试 3: 单个水印', 'info');
+            const result = document.getElementById('result3');
+            result.innerHTML = '<p>生成中...</p>';
+
+            try {
+                const element = document.getElementById('test3');
+                let canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                canvas = addWatermarkToCanvas(canvas, '@TestWatermark', {
+                    fontSize: 20,
+                    color: 'rgba(255, 255, 255, 0.3)',
+                    rotation: -15,
+                    position: 'bottom-right'
+                });
+
+                const imgData = canvasToImage(canvas);
+                result.innerHTML = `
+                    <p>✅ 单个水印添加成功！</p>
+                    <img src="${imgData}" alt="测试结果">
+                `;
+                log('测试 3 成功：单个水印添加完成', 'success');
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ 失败: ${error.message}</p>`;
+                log(`测试 3 失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试 3: 平铺水印
+        async function runTest3Tiled() {
+            log('开始测试 3: 平铺水印', 'info');
+            const result = document.getElementById('result3');
+            result.innerHTML = '<p>生成中...</p>';
+
+            try {
+                const element = document.getElementById('test3');
+                let canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                canvas = addTiledWatermarkToCanvas(canvas, 'WATERMARK', {
+                    fontSize: 24,
+                    color: 'rgba(255, 255, 255, 0.15)',
+                    rotation: -30,
+                    spacing: 200
+                });
+
+                const imgData = canvasToImage(canvas);
+                result.innerHTML = `
+                    <p>✅ 平铺水印添加成功！</p>
+                    <img src="${imgData}" alt="测试结果">
+                `;
+                log('测试 3 成功：平铺水印添加完成', 'success');
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ 失败: ${error.message}</p>`;
+                log(`测试 3 失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试 4: 下载功能
+        async function runTest4() {
+            log('开始测试 4: 下载功能', 'info');
+            const result = document.getElementById('result4');
+            result.innerHTML = '<p>生成中...</p>';
+
+            try {
+                const element = document.getElementById('test4');
+                const canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                const timestamp = Date.now();
+                await downloadCanvas(canvas, `test-${timestamp}.png`, 'image/png', 1.0);
+
+                result.innerHTML = `<p>✅ 下载成功！文件名: test-${timestamp}.png</p>`;
+                log(`测试 4 成功：文件已下载 test-${timestamp}.png`, 'success');
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ 失败: ${error.message}</p>`;
+                log(`测试 4 失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试 5: 不同格式
+        async function runTest5(format) {
+            log(`开始测试 5: ${format} 格式`, 'info');
+            const result = document.getElementById('result5');
+            result.innerHTML = '<p>生成中...</p>';
+
+            try {
+                const element = document.getElementById('test5');
+                const canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvasToImage(canvas, format, 0.9);
+                const size = Math.round(imgData.length / 1024);
+                
+                result.innerHTML = `
+                    <p>✅ ${format} 格式生成成功！</p>
+                    <p>文件大小: ${size}KB</p>
+                    <img src="${imgData}" alt="测试结果">
+                `;
+                log(`测试 5 成功：${format} 格式，大小 ${size}KB`, 'success');
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ 失败: ${error.message}</p>`;
+                log(`测试 5 失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 测试页面已加载', 'info');
+            log('点击按钮开始测试', 'info');
+        });
+    </script>
+</body>
+</html>
+

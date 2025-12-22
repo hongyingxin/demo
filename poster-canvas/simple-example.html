@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原生实现 - 简单示例</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* 要转换的内容样式 */
+        #myContent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #myContent h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        #myContent p {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 10px 10px 0;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        #result img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎯 原生 DOM 转 Canvas - 最简示例</h1>
+        
+        <div class="info">
+            <strong>📌 这个示例展示如何不使用任何插件，用纯原生 JavaScript 实现 DOM 转图片</strong>
+        </div>
+
+        <!-- 要转换的内容 -->
+        <div id="myContent">
+            <h2>Hello Canvas!</h2>
+            <p>这是要转换的内容 ✨</p>
+            <p>支持中文、Emoji 和各种样式</p>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div style="margin-top: 20px;">
+            <button onclick="convertToCanvas()">转换为 Canvas</button>
+            <button onclick="convertAndDownload()">转换并下载</button>
+        </div>
+
+        <!-- 结果显示 -->
+        <div id="result"></div>
+    </div>
+
+    <div class="card">
+        <h2>📝 核心代码</h2>
+        
+        <h3>1️⃣ 基础用法</h3>
+        <div class="code-block">
+// 获取元素<br>
+const element = document.getElementById('myContent');<br>
+<br>
+// 转换为 Canvas<br>
+const canvas = await domToCanvas(element, {<br>
+&nbsp;&nbsp;scale: 2,<br>
+&nbsp;&nbsp;backgroundColor: '#ffffff'<br>
+});<br>
+<br>
+// 转换为图片<br>
+const imgData = canvasToImage(canvas);
+        </div>
+
+        <h3>2️⃣ 下载图片</h3>
+        <div class="code-block">
+// 直接下载<br>
+await downloadCanvas(canvas, 'my-image.png');
+        </div>
+
+        <h3>3️⃣ 添加水印</h3>
+        <div class="code-block">
+// 添加水印<br>
+const watermarkedCanvas = addWatermarkToCanvas(canvas, '水印', {<br>
+&nbsp;&nbsp;fontSize: 20,<br>
+&nbsp;&nbsp;color: 'rgba(255, 255, 255, 0.3)',<br>
+&nbsp;&nbsp;position: 'bottom-right'<br>
+});
+        </div>
+    </div>
+
+    <script src="dom-to-canvas.js"></script>
+    <script>
+        /**
+         * 转换为 Canvas 并显示
+         */
+        async function convertToCanvas() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>⏳ 转换中...</p>';
+
+            try {
+                const startTime = performance.now();
+
+                // 1. 获取要转换的元素
+                const element = document.getElementById('myContent');
+
+                // 2. 转换为 Canvas
+                const canvas = await domToCanvas(element, {
+                    scale: 2,              // 2倍分辨率，更清晰
+                    backgroundColor: '#ffffff',
+                    includeCss: true
+                });
+
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+
+                // 3. 转换为图片并显示
+                const imgData = canvasToImage(canvas, 'image/png', 1.0);
+
+                resultDiv.innerHTML = `
+                    <div style="margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                        <h3 style="color: #48bb78;">✅ 转换成功！</h3>
+                        <p><strong>尺寸：</strong>${canvas.width} × ${canvas.height}px</p>
+                        <p><strong>耗时：</strong>${duration}ms</p>
+                        <p><strong>大小：</strong>${Math.round(imgData.length / 1024)}KB</p>
+                        <img src="${imgData}" alt="生成的图片">
+                    </div>
+                `;
+
+                console.log('✅ 转换成功！', {
+                    width: canvas.width,
+                    height: canvas.height,
+                    duration: duration + 'ms'
+                });
+
+            } catch (error) {
+                console.error('❌ 转换失败:', error);
+                resultDiv.innerHTML = `
+                    <div style="margin-top: 20px; padding: 20px; background: #fee; border-radius: 8px; color: #c00;">
+                        <h3>❌ 转换失败</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * 转换并下载
+         */
+        async function convertAndDownload() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>⏳ 生成中...</p>';
+
+            try {
+                // 1. 转换
+                const element = document.getElementById('myContent');
+                const canvas = await domToCanvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                // 2. 下载
+                const timestamp = Date.now();
+                await downloadCanvas(canvas, `my-canvas-${timestamp}.png`);
+
+                resultDiv.innerHTML = `
+                    <div style="margin-top: 20px; padding: 20px; background: #e7ffe7; border-radius: 8px;">
+                        <h3 style="color: #48bb78;">✅ 下载成功！</h3>
+                        <p>文件已保存到下载文件夹</p>
+                    </div>
+                `;
+
+                console.log('✅ 下载成功！');
+
+            } catch (error) {
+                console.error('❌ 下载失败:', error);
+                resultDiv.innerHTML = `
+                    <div style="margin-top: 20px; padding: 20px; background: #fee; border-radius: 8px; color: #c00;">
+                        <h3>❌ 下载失败</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎨 原生 DOM 转 Canvas 示例已加载');
+            console.log('📖 点击按钮开始体验');
+        });
+    </script>
+</body>
+</html>
+

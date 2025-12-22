@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原生实现 vs html2canvas 对比</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .panel-header h2 {
+            color: #2d3748;
+            font-size: 1.5em;
+        }
+
+        .badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .badge-native {
+            background: #48bb78;
+            color: white;
+        }
+
+        .badge-plugin {
+            background: #4299e1;
+            color: white;
+        }
+
+        .poster-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 40px;
+            color: white;
+            min-height: 400px;
+            margin-bottom: 20px;
+        }
+
+        .poster-title {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .poster-subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .poster-content p {
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn-native {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-plugin {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .result-area {
+            min-height: 200px;
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .result-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #718096;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .comparison-table {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-top: 30px;
+        }
+
+        .comparison-table h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .check {
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        .cross {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ 原生实现 vs html2canvas 对比</h1>
+            <p>直观对比两种实现方式的性能和效果</p>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <h2 style="color: #2d3748; margin-bottom: 20px;">🎛️ 控制面板</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>主标题</label>
+                    <input type="text" id="titleInput" value="技术对比演示" oninput="updateContent()">
+                </div>
+                <div class="form-group">
+                    <label>副标题</label>
+                    <input type="text" id="subtitleInput" value="原生 vs 插件" oninput="updateContent()">
+                </div>
+            </div>
+            <button class="btn btn-native" onclick="generateBoth()" style="max-width: 300px; margin: 0 auto; display: block;">
+                🚀 同时生成两种方式
+            </button>
+        </div>
+
+        <!-- 对比网格 -->
+        <div class="comparison-grid">
+            <!-- 原生实现 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>🎯 原生实现</h2>
+                    <span class="badge badge-native">零依赖</span>
+                </div>
+
+                <div class="poster-content" id="nativePoster">
+                    <div class="poster-title" id="nativeTitle">技术对比演示</div>
+                    <div class="poster-subtitle" id="nativeSubtitle">原生 vs 插件</div>
+                    <p>✨ 使用 SVG foreignObject</p>
+                    <p>🎨 原生 Canvas API</p>
+                    <p>⚡ 轻量级实现</p>
+                    <p>🚀 无需外部依赖</p>
+                </div>
+
+                <button class="btn btn-native" onclick="generateNative()">
+                    生成（原生方式）
+                </button>
+
+                <div class="result-area" id="nativeResult">
+                    <div class="loading">等待生成...</div>
+                </div>
+
+                <div class="stats" id="nativeStats" style="display: none;">
+                    <div class="stat-item">
+                        <div class="stat-value" id="nativeTime">-</div>
+                        <div class="stat-label">生成时间</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="nativeSize">-</div>
+                        <div class="stat-label">文件大小</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- html2canvas 实现 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>📦 html2canvas</h2>
+                    <span class="badge badge-plugin">第三方插件</span>
+                </div>
+
+                <div class="poster-content" id="pluginPoster">
+                    <div class="poster-title" id="pluginTitle">技术对比演示</div>
+                    <div class="poster-subtitle" id="pluginSubtitle">原生 vs 插件</div>
+                    <p>📦 成熟的第三方库</p>
+                    <p>🎨 功能完善</p>
+                    <p>🔧 配置选项丰富</p>
+                    <p>⚠️ 需要额外依赖</p>
+                </div>
+
+                <button class="btn btn-plugin" onclick="generatePlugin()">
+                    生成（html2canvas）
+                </button>
+
+                <div class="result-area" id="pluginResult">
+                    <div class="loading">等待生成...</div>
+                </div>
+
+                <div class="stats" id="pluginStats" style="display: none;">
+                    <div class="stat-item">
+                        <div class="stat-value" id="pluginTime">-</div>
+                        <div class="stat-label">生成时间</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="pluginSize">-</div>
+                        <div class="stat-label">文件大小</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对比表格 -->
+        <div class="comparison-table">
+            <h2>📊 详细对比</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>特性</th>
+                        <th>原生实现</th>
+                        <th>html2canvas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>外部依赖</td>
+                        <td class="check">✓ 无需依赖</td>
+                        <td class="cross">✗ 需要引入库</td>
+                    </tr>
+                    <tr>
+                        <td>包体积</td>
+                        <td class="check">✓ ~5KB</td>
+                        <td class="cross">✗ ~150KB+</td>
+                    </tr>
+                    <tr>
+                        <td>浏览器兼容性</td>
+                        <td>现代浏览器（支持 SVG foreignObject）</td>
+                        <td class="check">✓ 广泛兼容</td>
+                    </tr>
+                    <tr>
+                        <td>性能</td>
+                        <td class="check">✓ 快速</td>
+                        <td>中等</td>
+                    </tr>
+                    <tr>
+                        <td>CSS 支持</td>
+                        <td>基础样式支持</td>
+                        <td class="check">✓ 完整支持</td>
+                    </tr>
+                    <tr>
+                        <td>跨域图片</td>
+                        <td>需要配置 CORS</td>
+                        <td class="check">✓ 良好处理</td>
+                    </tr>
+                    <tr>
+                        <td>复杂布局</td>
+                        <td>简单到中等</td>
+                        <td class="check">✓ 复杂布局</td>
+                    </tr>
+                    <tr>
+                        <td>维护成本</td>
+                        <td class="check">✓ 自主可控</td>
+                        <td>依赖社区维护</td>
+                    </tr>
+                    <tr>
+                        <td>学习成本</td>
+                        <td class="check">✓ 原生 API</td>
+                        <td>需要学习库 API</td>
+                    </tr>
+                    <tr>
+                        <td>适用场景</td>
+                        <td>简单海报、卡片、证书</td>
+                        <td>复杂页面截图</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 引入两种实现 -->
+    <script src="dom-to-canvas.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <script>
+        /**
+         * 更新内容
+         */
+        function updateContent() {
+            const title = document.getElementById('titleInput').value;
+            const subtitle = document.getElementById('subtitleInput').value;
+
+            document.getElementById('nativeTitle').textContent = title;
+            document.getElementById('nativeSubtitle').textContent = subtitle;
+            document.getElementById('pluginTitle').textContent = title;
+            document.getElementById('pluginSubtitle').textContent = subtitle;
+        }
+
+        /**
+         * 使用原生方式生成
+         */
+        async function generateNative() {
+            const poster = document.getElementById('nativePoster');
+            const resultArea = document.getElementById('nativeResult');
+            const statsArea = document.getElementById('nativeStats');
+
+            resultArea.innerHTML = '<div class="loading">🎨 生成中...</div>';
+            statsArea.style.display = 'none';
+
+            try {
+                const startTime = performance.now();
+
+                const canvas = await domToCanvas(poster, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    includeCss: true
+                });
+
+                const endTime = performance.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+                const imgData = canvasToImage(canvas);
+                const size = Math.round(imgData.length / 1024);
+
+                resultArea.innerHTML = `
+                    <img src="${imgData}" class="result-image" alt="原生生成">
+                    <p style="text-align: center; margin-top: 15px; color: #48bb78; font-weight: 600;">
+                        ✅ 生成成功
+                    </p>
+                `;
+
+                document.getElementById('nativeTime').textContent = duration + 's';
+                document.getElementById('nativeSize').textContent = size + 'KB';
+                statsArea.style.display = 'grid';
+
+                console.log('✅ 原生方式生成成功:', { duration, size });
+
+            } catch (error) {
+                console.error('❌ 原生方式失败:', error);
+                resultArea.innerHTML = `
+                    <div style="text-align: center; color: #e53e3e; padding: 40px;">
+                        ❌ 生成失败<br><small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * 使用 html2canvas 生成
+         */
+        async function generatePlugin() {
+            const poster = document.getElementById('pluginPoster');
+            const resultArea = document.getElementById('pluginResult');
+            const statsArea = document.getElementById('pluginStats');
+
+            resultArea.innerHTML = '<div class="loading">📦 生成中...</div>';
+            statsArea.style.display = 'none';
+
+            try {
+                const startTime = performance.now();
+
+                const canvas = await html2canvas(poster, {
+                    backgroundColor: null,
+                    scale: 2,
+                    logging: false,
+                    useCORS: true
+                });
+
+                const endTime = performance.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+                const imgData = canvas.toDataURL('image/png');
+                const size = Math.round(imgData.length / 1024);
+
+                resultArea.innerHTML = `
+                    <img src="${imgData}" class="result-image" alt="html2canvas生成">
+                    <p style="text-align: center; margin-top: 15px; color: #4299e1; font-weight: 600;">
+                        ✅ 生成成功
+                    </p>
+                `;
+
+                document.getElementById('pluginTime').textContent = duration + 's';
+                document.getElementById('pluginSize').textContent = size + 'KB';
+                statsArea.style.display = 'grid';
+
+                console.log('✅ html2canvas 生成成功:', { duration, size });
+
+            } catch (error) {
+                console.error('❌ html2canvas 失败:', error);
+                resultArea.innerHTML = `
+                    <div style="text-align: center; color: #e53e3e; padding: 40px;">
+                        ❌ 生成失败<br><small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * 同时生成两种方式
+         */
+        async function generateBoth() {
+            console.log('🚀 开始同时生成...');
+            await Promise.all([
+                generateNative(),
+                generatePlugin()
+            ]);
+            console.log('✅ 全部生成完成！');
+        }
+
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('⚡ 对比演示页面已加载');
+            console.log('📊 可以开始对比测试了');
+        });
+    </script>
+</body>
+</html>
+

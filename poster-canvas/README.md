@@ -1,16 +1,20 @@
 # Canvas 海报生成器
 
-使用 `html2canvas` 插件将 DOM 元素转换为 Canvas 图片，实现海报生成、水印添加等功能。
+提供两种实现方式：
+1. **原生实现**：使用 SVG foreignObject + Canvas API（零依赖）
+2. **插件实现**：使用 `html2canvas` 插件（功能完善）
 
 ## 📦 功能特性
 
-- ✅ 将 DOM 元素转换为图片（使用 html2canvas）
+- ✅ 将 DOM 元素转换为图片（原生实现 + html2canvas）
 - ✅ 实时编辑海报内容
 - ✅ 自定义标题、副标题、水印
 - ✅ 上传自定义图片
 - ✅ 高清图片导出（2倍分辨率）
 - ✅ 一键下载生成的海报
 - ✅ 响应式设计，支持移动端
+- 🆕 **原生 DOM 转 Canvas 实现（无需插件）**
+- 🆕 **两种方式对比演示**
 
 ## 🚀 快速开始
 
@@ -19,6 +23,16 @@
 ```bash
 # 打开导航页（包含所有演示的入口）
 open start.html
+```
+
+### 🎯 新增：原生实现演示
+
+```bash
+# 原生实现（零依赖）
+open native-demo.html
+
+# 对比演示（原生 vs html2canvas）
+open comparison-demo.html
 ```
 
 ### 或直接打开具体页面
@@ -49,12 +63,139 @@ http://localhost:8080
 
 ## 📄 文件说明
 
+### HTML 演示页面
+
 - **start.html** ⭐ - 导航页，快速访问所有演示（推荐从这里开始）
 - **watermark-demo.html** 💧 - 水印功能详解，交互式演示（必看！）
 - **index.html** 🎨 - 主页面，完整的海报生成器
 - **advanced-demo.html** 🖼️ - 4种不同风格的海报模板
-- **poster-generator.js** - 核心 JavaScript 代码
+- 🆕 **native-demo.html** 🎯 - 原生实现演示（无需插件）
+- 🆕 **comparison-demo.html** ⚡ - 两种方式对比演示
+
+### JavaScript 核心代码
+
+- **poster-generator.js** - html2canvas 实现（依赖插件）
+- 🆕 **dom-to-canvas.js** - 原生实现（零依赖）
+
+### 文档
+
 - **README.md** - 本文档
+
+## 🎯 原生 DOM 转 Canvas 实现
+
+### 核心原理
+
+使用 SVG `foreignObject` + Canvas API 实现：
+
+```
+DOM Element → Clone & Style → SVG foreignObject → Image → Canvas
+```
+
+### 基本用法
+
+```javascript
+// 1. 引入原生实现
+<script src="dom-to-canvas.js"></script>
+
+// 2. 转换 DOM 为 Canvas
+const element = document.getElementById('posterContent');
+const canvas = await domToCanvas(element, {
+    scale: 2,                    // 缩放比例
+    backgroundColor: '#ffffff',  // 背景色
+    includeCss: true,            // 包含样式
+    quality: 1.0                 // 质量
+});
+
+// 3. 转换为图片
+const imgData = canvasToImage(canvas, 'image/png', 1.0);
+
+// 4. 下载图片
+await downloadCanvas(canvas, 'poster.png', 'image/png', 1.0);
+```
+
+### 添加水印
+
+```javascript
+// 单个水印
+const canvas = addWatermarkToCanvas(canvas, '水印文本', {
+    fontSize: 20,
+    color: 'rgba(255, 255, 255, 0.3)',
+    rotation: -15,
+    position: 'bottom-right'
+});
+
+// 平铺水印
+const canvas = addTiledWatermarkToCanvas(canvas, '水印文本', {
+    fontSize: 24,
+    color: 'rgba(255, 255, 255, 0.15)',
+    rotation: -30,
+    spacing: 200
+});
+```
+
+### API 文档
+
+#### `domToCanvas(element, options)`
+
+将 DOM 元素转换为 Canvas。
+
+**参数：**
+- `element` (HTMLElement) - 要转换的 DOM 元素
+- `options` (Object) - 配置选项
+  - `scale` (number) - 缩放比例，默认 2
+  - `backgroundColor` (string) - 背景色，默认 '#ffffff'
+  - `includeCss` (boolean) - 是否包含样式，默认 true
+  - `quality` (number) - 图片质量，0-1，默认 1.0
+
+**返回：** Promise<HTMLCanvasElement>
+
+#### `canvasToImage(canvas, format, quality)`
+
+将 Canvas 转换为图片 Data URL。
+
+**参数：**
+- `canvas` (HTMLCanvasElement) - Canvas 元素
+- `format` (string) - 图片格式，默认 'image/png'
+- `quality` (number) - 图片质量，0-1，默认 1.0
+
+**返回：** string (Data URL)
+
+#### `downloadCanvas(canvas, filename, format, quality)`
+
+下载 Canvas 为图片文件。
+
+**参数：**
+- `canvas` (HTMLCanvasElement) - Canvas 元素
+- `filename` (string) - 文件名，默认 'image.png'
+- `format` (string) - 图片格式，默认 'image/png'
+- `quality` (number) - 图片质量，0-1，默认 1.0
+
+**返回：** Promise<void>
+
+### 优缺点对比
+
+#### ✅ 优点
+
+- 零依赖，无需额外加载第三方库
+- 体积小，核心代码仅 ~5KB
+- 性能好，生成速度快
+- 代码简洁，易于理解和维护
+- 自主可控，不受第三方库限制
+
+#### ⚠️ 限制
+
+- 浏览器兼容性：需要支持 SVG foreignObject（现代浏览器）
+- CSS 支持：部分复杂 CSS 可能不完全支持
+- 跨域图片：需要正确配置 CORS
+- 复杂布局：适合简单到中等复杂度的布局
+
+#### 📌 适用场景
+
+- ✅ 海报生成
+- ✅ 名片设计
+- ✅ 证书制作
+- ✅ 简单卡片
+- ⚠️ 复杂页面截图（建议使用 html2canvas）
 
 ## 📖 html2canvas 使用说明
 
