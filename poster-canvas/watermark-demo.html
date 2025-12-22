@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水印功能详解 - Canvas Watermark Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .poster {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            overflow: hidden;
+        }
+
+        .poster-content {
+            text-align: center;
+            z-index: 1;
+        }
+
+        .poster-title {
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .poster-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-row label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .control-row input,
+        .control-row select {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .control-row input[type="number"],
+        .control-row input[type="range"] {
+            width: 100%;
+        }
+
+        .range-value {
+            display: inline-block;
+            min-width: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .explanation {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .explanation h3 {
+            font-size: 16px;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .explanation p {
+            font-size: 14px;
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .explanation pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .preview-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-section h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .preview-image {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .code-block .comment {
+            color: #a0aec0;
+        }
+
+        .code-block .keyword {
+            color: #9f7aea;
+        }
+
+        .code-block .function {
+            color: #4299e1;
+        }
+
+        .code-block .string {
+            color: #48bb78;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💧 Canvas 水印功能详解</h1>
+        <p class="subtitle">深入理解 addCustomWatermark 和 addTiledWatermark 的使用</p>
+
+        <div class="demo-grid">
+            <!-- Demo 1: 单个水印 -->
+            <div class="card">
+                <div class="card-header">Demo 1: 单个水印 (addCustomWatermark)</div>
+                <div class="card-body">
+                    <div id="poster1" class="poster">
+                        <div class="poster-content">
+                            <div class="poster-title">精美海报</div>
+                            <div class="poster-subtitle">Canvas 水印演示</div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <div class="control-row">
+                            <label>水印文字</label>
+                            <input type="text" id="watermark1Text" value="CONFIDENTIAL" placeholder="输入水印文字">
+                        </div>
+
+                        <div class="control-row">
+                            <label>水印位置</label>
+                            <select id="watermark1Position">
+                                <option value="bottom-right">右下角</option>
+                                <option value="bottom-left">左下角</option>
+                                <option value="top-right">右上角</option>
+                                <option value="top-left">左上角</option>
+                                <option value="center">居中</option>
+                            </select>
+                        </div>
+
+                        <div class="control-row">
+                            <label>字体大小: <span class="range-value" id="fontSize1Value">24</span>px</label>
+                            <input type="range" id="fontSize1" min="10" max="60" value="24" oninput="updateValue('fontSize1')">
+                        </div>
+
+                        <div class="control-row">
+                            <label>旋转角度: <span class="range-value" id="rotation1Value">-15</span>°</label>
+                            <input type="range" id="rotation1" min="-90" max="90" value="-15" oninput="updateValue('rotation1')">
+                        </div>
+
+                        <div class="control-row">
+                            <label>透明度: <span class="range-value" id="opacity1Value">0.3</span></label>
+                            <input type="range" id="opacity1" min="0" max="1" step="0.1" value="0.3" oninput="updateValue('opacity1')">
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generateDemo1()">生成预览</button>
+                        <button class="btn btn-success" onclick="downloadDemo('poster1')">下载</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo 2: 平铺水印 -->
+            <div class="card">
+                <div class="card-header">Demo 2: 平铺水印 (addTiledWatermark)</div>
+                <div class="card-body">
+                    <div id="poster2" class="poster">
+                        <div class="poster-content">
+                            <div class="poster-title">精美海报</div>
+                            <div class="poster-subtitle">Canvas 水印演示</div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <div class="control-row">
+                            <label>水印文字</label>
+                            <input type="text" id="watermark2Text" value="SAMPLE" placeholder="输入水印文字">
+                        </div>
+
+                        <div class="control-row">
+                            <label>字体大小: <span class="range-value" id="fontSize2Value">20</span>px</label>
+                            <input type="range" id="fontSize2" min="10" max="60" value="20" oninput="updateValue('fontSize2')">
+                        </div>
+
+                        <div class="control-row">
+                            <label>间距: <span class="range-value" id="spacing2Value">200</span>px</label>
+                            <input type="range" id="spacing2" min="100" max="400" value="200" oninput="updateValue('spacing2')">
+                        </div>
+
+                        <div class="control-row">
+                            <label>旋转角度: <span class="range-value" id="rotation2Value">-30</span>°</label>
+                            <input type="range" id="rotation2" min="-90" max="90" value="-30" oninput="updateValue('rotation2')">
+                        </div>
+
+                        <div class="control-row">
+                            <label>透明度: <span class="range-value" id="opacity2Value">0.15</span></label>
+                            <input type="range" id="opacity2" min="0" max="1" step="0.05" value="0.15" oninput="updateValue('opacity2')">
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generateDemo2()">生成预览</button>
+                        <button class="btn btn-success" onclick="downloadDemo('poster2')">下载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 代码说明 -->
+        <div class="explanation">
+            <h3>📖 水印函数详解</h3>
+            
+            <p><strong>1. addCustomWatermark - 单个水印</strong></p>
+            <p>在 Canvas 上添加一个自定义位置的水印，适合添加版权信息、标识等。</p>
+            
+            <pre><code>function addCustomWatermark(canvas, text, options = {}) {
+    const ctx = canvas.getContext('2d');
+    const {
+        fontSize = 20,
+        color = 'rgba(0, 0, 0, 0.2)',
+        rotation = -15,
+        position = 'bottom-right'
+    } = options;
+
+    ctx.save();
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.fillStyle = color;
+    
+    // 根据 position 参数计算坐标
+    let x, y;
+    switch(position) {
+        case 'bottom-right':
+            x = canvas.width - textWidth - 20;
+            y = canvas.height - 20;
+            break;
+        // ... 其他位置
+    }
+    
+    ctx.translate(x, y);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+    
+    return canvas;
+}</code></pre>
+
+            <p style="margin-top: 20px;"><strong>2. addTiledWatermark - 平铺水印</strong></p>
+            <p>在整个 Canvas 上平铺重复的水印文字，适合保护内容版权。</p>
+            
+            <pre><code>function addTiledWatermark(canvas, text, options = {}) {
+    const ctx = canvas.getContext('2d');
+    const {
+        fontSize = 20,
+        color = 'rgba(0, 0, 0, 0.1)',
+        rotation = -30,
+        spacing = 200  // 水印之间的间距
+    } = options;
+
+    ctx.save();
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.fillStyle = color;
+    
+    // 计算需要的水印数量
+    const cols = Math.ceil(canvas.width / spacing) + 1;
+    const rows = Math.ceil(canvas.height / spacing) + 1;
+
+    // 平铺水印
+    for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+            const x = i * spacing;
+            const y = j * spacing;
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+        }
+    }
+
+    ctx.restore();
+    return canvas;
+}</code></pre>
+
+            <p style="margin-top: 20px;"><strong>3. 使用示例</strong></p>
+            <pre><code>// 生成海报后添加水印
+html2canvas(element).then(canvas => {
+    // 方式1: 添加单个水印
+    canvas = addCustomWatermark(canvas, '版权所有', {
+        fontSize: 24,
+        color: 'rgba(255, 255, 255, 0.5)',
+        rotation: -15,
+        position: 'bottom-right'
+    });
+    
+    // 方式2: 添加平铺水印
+    canvas = addTiledWatermark(canvas, 'CONFIDENTIAL', {
+        fontSize: 20,
+        color: 'rgba(255, 255, 255, 0.1)',
+        rotation: -30,
+        spacing: 250
+    });
+    
+    // 下载
+    canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'watermarked-poster.png';
+        link.href = url;
+        link.click();
+    });
+});</code></pre>
+
+            <p style="margin-top: 20px;"><strong>💡 关键点说明：</strong></p>
+            <ul style="padding-left: 20px; margin-top: 10px; line-height: 1.8;">
+                <li><code>ctx.save()</code> 和 <code>ctx.restore()</code>：保存和恢复 Canvas 状态</li>
+                <li><code>ctx.translate(x, y)</code>：移动坐标原点</li>
+                <li><code>ctx.rotate(angle)</code>：旋转坐标系（单位是弧度）</li>
+                <li><code>rgba()</code>：使用 RGBA 颜色控制透明度</li>
+                <li><code>spacing</code>：控制平铺水印的密度</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 引入 html2canvas -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <script>
+        const canvasCache = new Map();
+
+        // 更新滑块值显示
+        function updateValue(id) {
+            const input = document.getElementById(id);
+            const display = document.getElementById(id + 'Value');
+            display.textContent = input.value;
+        }
+
+        /**
+         * 单个水印函数
+         */
+        function addCustomWatermark(canvas, text, options = {}) {
+            const ctx = canvas.getContext('2d');
+            const {
+                fontSize = 20,
+                color = 'rgba(255, 255, 255, 0.3)',
+                rotation = -15,
+                position = 'bottom-right'
+            } = options;
+
+            ctx.save();
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.fillStyle = color;
+            
+            // 测量文字宽度
+            const textWidth = ctx.measureText(text).width;
+            
+            // 根据位置设置坐标
+            let x, y;
+            const padding = 20;
+            
+            switch(position) {
+                case 'bottom-right':
+                    x = canvas.width - textWidth - padding;
+                    y = canvas.height - padding;
+                    break;
+                case 'bottom-left':
+                    x = padding;
+                    y = canvas.height - padding;
+                    break;
+                case 'top-right':
+                    x = canvas.width - textWidth - padding;
+                    y = padding + fontSize;
+                    break;
+                case 'top-left':
+                    x = padding;
+                    y = padding + fontSize;
+                    break;
+                case 'center':
+                    x = (canvas.width - textWidth) / 2;
+                    y = canvas.height / 2;
+                    break;
+                default:
+                    x = canvas.width - textWidth - padding;
+                    y = canvas.height - padding;
+            }
+            
+            ctx.translate(x, y);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+            
+            return canvas;
+        }
+
+        /**
+         * 平铺水印函数
+         */
+        function addTiledWatermark(canvas, text, options = {}) {
+            const ctx = canvas.getContext('2d');
+            const {
+                fontSize = 20,
+                color = 'rgba(255, 255, 255, 0.15)',
+                rotation = -30,
+                spacing = 200
+            } = options;
+
+            ctx.save();
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 计算需要的水印数量
+            const cols = Math.ceil(canvas.width / spacing) + 1;
+            const rows = Math.ceil(canvas.height / spacing) + 1;
+
+            // 平铺水印
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    const x = i * spacing;
+                    const y = j * spacing;
+                    
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation * Math.PI / 180);
+                    ctx.fillText(text, 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            ctx.restore();
+            return canvas;
+        }
+
+        /**
+         * 生成 Demo 1: 单个水印
+         */
+        async function generateDemo1() {
+            const poster = document.getElementById('poster1');
+            const text = document.getElementById('watermark1Text').value || 'WATERMARK';
+            const position = document.getElementById('watermark1Position').value;
+            const fontSize = parseInt(document.getElementById('fontSize1').value);
+            const rotation = parseInt(document.getElementById('rotation1').value);
+            const opacity = parseFloat(document.getElementById('opacity1').value);
+
+            try {
+                let canvas = await html2canvas(poster, {
+                    backgroundColor: null,
+                    scale: 2,
+                    logging: false
+                });
+
+                // 添加单个水印
+                canvas = addCustomWatermark(canvas, text, {
+                    fontSize: fontSize,
+                    color: `rgba(255, 255, 255, ${opacity})`,
+                    rotation: rotation,
+                    position: position
+                });
+
+                canvasCache.set('poster1', canvas);
+                alert(`✅ 单个水印生成成功！\n文字: ${text}\n位置: ${position}\n大小: ${fontSize}px`);
+
+            } catch (error) {
+                console.error('生成失败:', error);
+                alert('❌ 生成失败: ' + error.message);
+            }
+        }
+
+        /**
+         * 生成 Demo 2: 平铺水印
+         */
+        async function generateDemo2() {
+            const poster = document.getElementById('poster2');
+            const text = document.getElementById('watermark2Text').value || 'WATERMARK';
+            const fontSize = parseInt(document.getElementById('fontSize2').value);
+            const spacing = parseInt(document.getElementById('spacing2').value);
+            const rotation = parseInt(document.getElementById('rotation2').value);
+            const opacity = parseFloat(document.getElementById('opacity2').value);
+
+            try {
+                let canvas = await html2canvas(poster, {
+                    backgroundColor: null,
+                    scale: 2,
+                    logging: false
+                });
+
+                // 添加平铺水印
+                canvas = addTiledWatermark(canvas, text, {
+                    fontSize: fontSize,
+                    color: `rgba(255, 255, 255, ${opacity})`,
+                    rotation: rotation,
+                    spacing: spacing
+                });
+
+                canvasCache.set('poster2', canvas);
+                alert(`✅ 平铺水印生成成功！\n文字: ${text}\n间距: ${spacing}px\n大小: ${fontSize}px`);
+
+            } catch (error) {
+                console.error('生成失败:', error);
+                alert('❌ 生成失败: ' + error.message);
+            }
+        }
+
+        /**
+         * 下载海报
+         */
+        function downloadDemo(posterId) {
+            const canvas = canvasCache.get(posterId);
+            if (!canvas) {
+                alert('请先点击"生成预览"按钮！');
+                return;
+            }
+
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = `${posterId}-watermarked-${Date.now()}.png`;
+                link.href = url;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            }, 'image/png', 1.0);
+        }
+
+        console.log('💧 水印演示页面已加载');
+        console.log('提示: 调整参数后点击"生成预览"查看效果');
+    </script>
+</body>
+</html>
+

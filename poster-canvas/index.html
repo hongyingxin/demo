@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas 海报生成器 - html2canvas Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
+
+        .demo-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .demo-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        /* 海报内容区域 */
+        .poster-content {
+            position: relative;
+            width: 100%;
+            min-height: 400px;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .poster-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .poster-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .poster-subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .poster-image {
+            width: 100%;
+            height: 200px;
+            background: #fff;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .poster-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        .poster-footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed rgba(0, 0, 0, 0.1);
+        }
+
+        .qrcode-placeholder {
+            width: 80px;
+            height: 80px;
+            background: white;
+            margin: 0 auto 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* 水印 */
+        .watermark {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(0, 0, 0, 0.2);
+            font-size: 14px;
+            font-weight: bold;
+            transform: rotate(-15deg);
+            pointer-events: none;
+        }
+
+        /* 控制面板 */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .control-group input,
+        .control-group textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .control-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* 预览区域 */
+        .preview-area {
+            margin-top: 20px;
+        }
+
+        .preview-image {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .tips {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .tips h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .tips ul {
+            padding-left: 20px;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Canvas 海报生成器</h1>
+
+        <div class="demo-wrapper">
+            <!-- 左侧：海报编辑区 -->
+            <div class="card">
+                <h2>🎨 海报内容</h2>
+                <div id="posterContent" class="poster-content">
+                    <div class="poster-header">
+                        <div class="poster-title" id="posterTitle">欢迎使用海报生成器</div>
+                        <div class="poster-subtitle" id="posterSubtitle">一键生成精美海报，支持自定义内容</div>
+                    </div>
+                    
+                    <div class="poster-image" id="posterImage">
+                        <span style="color: #ccc;">上传图片或使用默认样式</span>
+                    </div>
+
+                    <div class="poster-footer">
+                        <div class="qrcode-placeholder">二维码</div>
+                        <div style="font-size: 14px; color: #666;">扫码了解更多</div>
+                    </div>
+
+                    <div class="watermark" id="watermark">WATERMARK</div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="generatePoster()">生成海报 📷</button>
+                    <button class="btn btn-success" onclick="downloadPoster()" id="downloadBtn" disabled>下载海报 💾</button>
+                </div>
+            </div>
+
+            <!-- 右侧：控制面板 -->
+            <div class="card">
+                <h2>⚙️ 自定义设置</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>海报标题</label>
+                        <input type="text" id="titleInput" value="欢迎使用海报生成器" oninput="updatePoster()">
+                    </div>
+
+                    <div class="control-group">
+                        <label>副标题</label>
+                        <input type="text" id="subtitleInput" value="一键生成精美海报，支持自定义内容" oninput="updatePoster()">
+                    </div>
+
+                    <div class="control-group">
+                        <label>水印文字</label>
+                        <input type="text" id="watermarkInput" value="WATERMARK" oninput="updatePoster()">
+                    </div>
+
+                    <div class="control-group">
+                        <label>水印类型</label>
+                        <select id="watermarkType" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                            <option value="none">无水印</option>
+                            <option value="single" selected>单个水印（右下角）</option>
+                            <option value="tiled">平铺水印（全屏）</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>水印位置（单个水印时有效）</label>
+                        <select id="watermarkPosition" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                            <option value="bottom-right" selected>右下角</option>
+                            <option value="bottom-left">左下角</option>
+                            <option value="top-right">右上角</option>
+                            <option value="top-left">左上角</option>
+                            <option value="center">居中</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>上传图片</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
+                            <label for="imageInput" class="file-input-label">
+                                点击上传图片 📁
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tips">
+                    <h3>💡 使用提示</h3>
+                    <ul>
+                        <li>修改文字内容会实时更新海报预览</li>
+                        <li>上传图片支持 JPG、PNG、GIF 等格式</li>
+                        <li>选择水印类型：无水印、单个水印或平铺水印</li>
+                        <li>单个水印支持5个位置选择</li>
+                        <li>平铺水印会在整个画布上重复显示</li>
+                        <li>点击"生成海报"后可下载图片</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预览区域 -->
+        <div class="card">
+            <h2>🖼️ 生成预览</h2>
+            <div id="previewArea" class="preview-area">
+                <div style="text-align: center; color: #999; padding: 40px;">
+                    点击"生成海报"按钮生成预览图
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 html2canvas -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <script src="./poster-generator.js"></script>
+</body>
+</html>
+

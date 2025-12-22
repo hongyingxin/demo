@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级功能演示 - html2canvas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .demo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+
+        .demo-content {
+            padding: 20px;
+        }
+
+        .poster-template {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3/4;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        /* 模板1：渐变背景 */
+        .template-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .template-1 h2 {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .template-1 p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        /* 模板2：产品展示 */
+        .template-2 {
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .template-2 .image-area {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            height: 60%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+
+        .template-2 .info-area {
+            padding: 20px;
+            height: 40%;
+        }
+
+        .template-2 .product-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .template-2 .product-price {
+            font-size: 28px;
+            color: #e53e3e;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .template-2 .product-desc {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        /* 模板3：文章卡片 */
+        .template-3 {
+            background: #ffffff;
+            padding: 30px;
+        }
+
+        .template-3 .article-tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+
+        .template-3 .article-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .template-3 .article-meta {
+            display: flex;
+            gap: 15px;
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .template-3 .article-content {
+            color: #4a5568;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        /* 模板4：带二维码 */
+        .template-4 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .template-4 .top-content {
+            color: white;
+            text-align: center;
+        }
+
+        .template-4 .main-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .template-4 .sub-title {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .template-4 .qr-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .template-4 .qr-code {
+            width: 120px;
+            height: 120px;
+            background: #e2e8f0;
+            margin: 0 auto 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .template-4 .qr-text {
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .watermark-demo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+            font-weight: bold;
+            transform: rotate(-15deg);
+        }
+
+        .tips-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .tips-section h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .tips-section pre {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .tips-section code {
+            color: #e53e3e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 html2canvas 高级功能演示</h1>
+
+        <div class="demo-grid">
+            <!-- 模板1：简约风格 -->
+            <div class="demo-card">
+                <div class="demo-header">模板1：简约风格</div>
+                <div class="demo-content">
+                    <div id="poster1" class="poster-template template-1">
+                        <h2>简约设计</h2>
+                        <p>优雅的渐变背景</p>
+                        <p style="margin-top: 20px; font-size: 14px;">简单而不简约</p>
+                        <div class="watermark-demo">DEMO</div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generate('poster1')">生成</button>
+                        <button class="btn btn-success" onclick="download('poster1')">下载</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模板2：产品海报 -->
+            <div class="demo-card">
+                <div class="demo-header">模板2：产品展示</div>
+                <div class="demo-content">
+                    <div id="poster2" class="poster-template template-2">
+                        <div class="image-area">🎁</div>
+                        <div class="info-area">
+                            <div class="product-name">限时优惠</div>
+                            <div class="product-price">¥199</div>
+                            <div class="product-desc">精选商品，品质保证，现在购买立享优惠！</div>
+                        </div>
+                        <div class="watermark-demo" style="color: rgba(0,0,0,0.2);">DEMO</div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generate('poster2')">生成</button>
+                        <button class="btn btn-success" onclick="download('poster2')">下载</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模板3：文章卡片 -->
+            <div class="demo-card">
+                <div class="demo-header">模板3：文章分享</div>
+                <div class="demo-content">
+                    <div id="poster3" class="poster-template template-3">
+                        <div class="article-tag">技术分享</div>
+                        <div class="article-title">如何使用 html2canvas 生成精美海报</div>
+                        <div class="article-meta">
+                            <span>👤 作者</span>
+                            <span>📅 2024-01-01</span>
+                            <span>👁️ 999</span>
+                        </div>
+                        <div class="article-content">
+                            html2canvas 是一个强大的 JavaScript 库，可以将 DOM 元素转换为 Canvas 图片。
+                            它支持大部分 CSS 样式，使用简单，功能强大。
+                        </div>
+                        <div class="watermark-demo" style="color: rgba(0,0,0,0.1);">DEMO</div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generate('poster3')">生成</button>
+                        <button class="btn btn-success" onclick="download('poster3')">下载</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模板4：带二维码 -->
+            <div class="demo-card">
+                <div class="demo-header">模板4：扫码分享</div>
+                <div class="demo-content">
+                    <div id="poster4" class="poster-template template-4">
+                        <div class="top-content">
+                            <div class="main-title">🎉 精彩内容</div>
+                            <div class="sub-title">扫码查看更多</div>
+                        </div>
+                        <div class="qr-section">
+                            <div class="qr-code">二维码</div>
+                            <div class="qr-text">长按识别二维码</div>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generate('poster4')">生成</button>
+                        <button class="btn btn-success" onclick="download('poster4')">下载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="tips-section">
+            <h2>💡 使用说明</h2>
+            <pre><code>// 基本使用
+const element = document.getElementById('poster1');
+
+// 生成海报
+html2canvas(element, {
+    backgroundColor: null,  // 透明背景
+    scale: 2,              // 2倍清晰度
+    useCORS: true,         // 允许跨域图片
+    logging: false         // 关闭日志
+}).then(canvas => {
+    // 转换为图片
+    const imgData = canvas.toDataURL('image/png');
+    
+    // 下载图片
+    canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'poster.png';
+        link.href = url;
+        link.click();
+    }, 'image/png', 1.0);
+});
+</code></pre>
+        </div>
+    </div>
+
+    <!-- 引入 html2canvas -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <script>
+        const canvasCache = new Map();
+
+        /**
+         * 生成海报
+         */
+        async function generate(id) {
+            const element = document.getElementById(id);
+            if (!element) return;
+
+            try {
+                const canvas = await html2canvas(element, {
+                    backgroundColor: null,
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    removeContainer: true
+                });
+
+                canvasCache.set(id, canvas);
+                
+                // 显示成功提示
+                alert(`✅ ${id} 生成成功！\n分辨率: ${canvas.width} × ${canvas.height}`);
+                
+                console.log(`${id} 生成成功`, {
+                    width: canvas.width,
+                    height: canvas.height
+                });
+
+            } catch (error) {
+                console.error('生成失败:', error);
+                alert('❌ 生成失败: ' + error.message);
+            }
+        }
+
+        /**
+         * 下载海报
+         */
+        function download(id) {
+            const canvas = canvasCache.get(id);
+            if (!canvas) {
+                alert('请先点击"生成"按钮！');
+                return;
+            }
+
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = `${id}-${Date.now()}.png`;
+                link.href = url;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            }, 'image/png', 1.0);
+        }
+
+        // 批量生成所有海报
+        async function generateAll() {
+            const ids = ['poster1', 'poster2', 'poster3', 'poster4'];
+            for (const id of ids) {
+                await generate(id);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            alert('✅ 全部生成完成！');
+        }
+
+        console.log('🎨 高级功能演示已加载');
+        console.log('提示：点击每个模板下方的"生成"按钮来生成海报');
+    </script>
+</body>
+</html>
+
