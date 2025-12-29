@@ -2,23 +2,29 @@ import express from "express";
 import { GoogleGenAI } from "@google/genai";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-console.log('--------------')
+import { setGlobalDispatcher, ProxyAgent } from 'undici';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 8080;
 
 // 中间件
 app.use(express.json());
 app.use(express.static(join(__dirname, "public")));
 
-// 优先使用环境变量，如果没有则使用硬编码的 API key（仅用于测试）
-// AIzaSyCigErdRpE_xiHwyMYR2rr7sfcKmrewXvM
-// AIzaSyAjCdsijhVQvJPx6iyCm7nKPIoHIJUm-sY
-const apiKey = process.env.GEMINI_API_KEY || "AIzaSyAjCdsijhVQvJPx6iyCm7nKPIoHIJUm-sY";
+// 配置全局代理 (Node.js 原生 fetch 支持)
+const PROXY_URL = process.env.PROXY_URL || "http://127.0.0.1:7897";
+if (PROXY_URL) {
+  const proxyAgent = new ProxyAgent(PROXY_URL);
+  setGlobalDispatcher(proxyAgent);
+  console.log(`已设置全局代理: ${PROXY_URL}`);
+}
 
-// 根据官方文档，正确初始化客户端
+const apiKey = "";
+
+// 初始化 Google AI 客户端 (Gemini 2.0 SDK)
 const ai = new GoogleGenAI({
   apiKey: apiKey,
 });
@@ -34,8 +40,9 @@ app.post("/api/chat", async (req, res) => {
     
     console.log("收到AI请求:", message);
     
+    // 使用 Gemini 2.0 Flash 模型
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: message,
     });
     
@@ -51,7 +58,7 @@ app.post("/api/chat", async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || "AI请求失败",
-      details: error.status ? `状态码: ${error.status}` : undefined,
+      details: error.status ? `状态码: ${error.status}` : (error.cause ? `原因: ${error.cause.message}` : undefined),
     });
   }
 });
