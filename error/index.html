@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>异常监听</title>
+</head>
+<body>
+  
+</body>
+<script>
+  /*
+   * try-catch 基础捕获
+   * 最基础的同步捕获方式，它会捕获块内抛出的异常，防止程序奔溃
+   */
+  // try {
+  //   const data = 1
+  // } catch (error) {
+  //   console.log('error', error)
+  // } finally {
+  //   console.log('finally')
+  // }
+  /*
+   * onerror 全局监听
+   * 当JS运行时发生错误且未被try..catch捕获时，会触发此事件
+   */
+  window.onerror = function(message, source, line, column, error) {
+    console.log('onerror', message, source, line, column, error)
+  }
+  /*
+   * 全局监听
+   * 与 onerror 类似，但功能更强
+   * 通过设置useCapture为true，可以捕获到资源加载失败的错误
+   */
+  window.addEventListener('error', (event) => {
+    console.log(event)
+    if (event.target.tagName) {
+      console.log('资源加载失败', event.target.src || event.target.href)
+    } else {
+      console.log('运行时错误', event)
+    }
+  }, true)
+  /*
+   * 专门用于捕获那些没有被.catch处理的Promise错误
+   * onerror 无法捕获Promise内部的异步错误
+   */
+  window.addEventListener('unhandledrejection', (event) => {
+    console.log('unhandledrejection', event)
+  })
+
+  // --- 主动触发错误进行测试 ---
+
+  // 1. 触发运行时错误 (会被 window.onerror 和 window.addEventListener('error') 捕获)
+  // setTimeout(() => {
+  //   console.log('>>> 准备触发：运行时错误');
+  //   // 故意调用一个未定义的函数
+  //   makeARuntimeError(); 
+  // }, 1000);
+
+  // 2. 触发 Promise 错误 (会被 window.addEventListener('unhandledrejection') 捕获)
+  // setTimeout(() => {
+  //   console.log('>>> 准备触发：Promise 未捕获异常');
+  //   Promise.reject(new Error('这是一个未被 catch 的 Promise 错误'));
+  // }, 2000);
+
+  // 3. 触发资源加载错误 (会被 window.addEventListener('error', ..., true) 捕获)
+  // setTimeout(() => {
+  //   console.log('>>> 准备触发：动态资源加载错误');
+  //   const img = new Image();
+  //   img.src = 'https://invalid-domain-xxx/test.png';
+  //   document.body.appendChild(img);
+  // }, 3000);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue22.js"></script>
+</html>
