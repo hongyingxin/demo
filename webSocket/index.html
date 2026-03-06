@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>原生 WebSocket (持久化存储重构)</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+        #message-list { border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #fdfdfd; border-radius: 4px; }
+        .server { color: #0066cc; margin: 8px 0; }
+        .client { color: #009933; margin: 8px 0; font-weight: bold; }
+        .system { color: #888; font-size: 0.9em; font-style: italic; margin: 8px 0; text-align: center; border-bottom: 1px solid #eee; }
+        .error { color: #cc0000; font-weight: bold; margin: 8px 0; }
+        .controls { display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; background: #eee; }
+        button#send-btn { background: #0066cc; color: white; }
+        button#send-btn:hover { background: #0052a3; }
+    </style>
+</head>
+<body>
+    <h1>原生 WebSocket 演示</h1>
+    <p>包含：ACK 确认 + 离线队列 + <strong>LocalStorage 持久化 (防刷新丢失)</strong></p>
+    
+    <div id="message-list"></div>
+    
+    <div class="controls">
+        <input type="text" id="message-input" placeholder="输入消息...">
+        <button id="send-btn">发送消息</button>
+        <button id="close-btn">手动关闭</button>
+    </div>
+
+    <script>
+        const messageList = document.getElementById('message-list');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const closeBtn = document.getElementById('close-btn');
+
+        class MyWebSocket {
+            constructor(url) {
+                this.url = url;
+                this.socket = null;
+                this.isExplicityClosed = false;
+                this.STORAGE_KEY = 'ws_offline_messages';
+                
+                // 1. 初始化：从缓存恢复积压的消息
+                this.messageMap = this.loadFromStorage();
+                
+                this.reconnectCount = 0;
+                this.maxReconnectAttempts = 5;
+                this.reconnectTimeout = 1000;
+                this.pingInterval = 5000;
+                this.pongTimeout = 3000;
+                this.pingTimer = null;
+                this.pongTimer = null;
+
+                this.connect();
+            }
+
+            // --- 持久化逻辑 ---
+            saveToStorage() {
+                try {
+                    const data = JSON.stringify(Array.from(this.messageMap.entries()));
+                    localStorage.setItem(this.STORAGE_KEY, data);
+                } catch (e) {
+                    console.error('[Storage] 保存失败', e);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const data = localStorage.getItem(this.STORAGE_KEY);
+                    if (data) {
+                        const entries = JSON.parse(data);
+                        console.log(`[Storage] 恢复了 ${entries.length} 条离线消息`);
+                        return new Map(entries);
+                    }
+                } catch (e) {
+                    console.error('[Storage] 加载失败', e);
+                }
+                return new Map();
+            }
+
+            generateId() {
+                return Math.random().toString(36).substr(2, 9);
+            }
+
+            // 2. 发送：入队、持久化、尝试发出
+            send(type, payload = {}) {
+                const msgId = this.generateId();
+                const message = { type, payload, msgId, timestamp: Date.now() };
+
+                if (type === 'message') {
+                    this.messageMap.set(msgId, message);
+                    this.saveToStorage(); // 实时同步到本地
+                }
+
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    console.log(`[WS] 发送: ${msgId}`);
+                    this.socket.send(JSON.stringify(message));
+                } else if (type === 'message') {
+                    console.log(`[WS] 离线暂存并持久化: ${msgId}`);
+                }
+                return msgId;
+            }
+
+            // 3. 接收：ACK 时删除、同步本地
+            onMessageReceived(data) {
+                try {
+                    const message = JSON.parse(data);
+                    const { type, payload } = message;
+                    this.resetHeartbeat();
+
+                    switch (type) {
+                        case 'ack':
+                            const { msgId } = payload;
+                            console.log(`[ACK] 确认移除: ${msgId}`);
+                            if (this.messageMap.has(msgId)) {
+                                this.messageMap.delete(msgId);
+                                this.saveToStorage(); // 同步删除本地缓存
+                            }
+                            break;
+                        case 'pong':
+                            console.log('[Heartbeat] 收到 pong');
+                            break;
+                        case 'message':
+                            appendMessage('服务器', payload, 'server');
+                            break;
+                        case 'system':
+                            appendMessage('系统', payload, 'system');
+                            break;
+                    }
+                } catch (err) {
+                    console.warn('[WS] 解析失败或非 JSON:', data);
+                }
+            }
+
+            // 4. 重连成功后的冲刷
+            flushQueue() {
+                if (this.messageMap.size === 0) return;
+                console.log(`[WS] 正在补发 ${this.messageMap.size} 条积压消息...`);
+                
+                // 按插入顺序重发
+                for (const [msgId, message] of this.messageMap) {
+                    this.socket.send(JSON.stringify(message));
+                }
+            }
+
+            connect() {
+                console.log(`[WS] 连接中 ${this.url}...`);
+                this.socket = new WebSocket(this.url);
+                this.isExplicityClosed = false;
+
+                this.socket.onopen = () => {
+                    console.log('[WS] 连接成功！');
+                    this.reconnectCount = 0;
+                    appendMessage('系统', 'WebSocket 连接成功！', 'system');
+                    this.startHeartbeat();
+                    this.flushQueue(); // 补发缓存消息
+                };
+
+                this.socket.onmessage = (event) => this.onMessageReceived(event.data);
+
+                this.socket.onclose = () => {
+                    this.clearTimers();
+                    if (!this.isExplicityClosed) {
+                        appendMessage('系统', '异常断开，重连中...', 'system');
+                        this.reconnect();
+                    }
+                };
+
+                this.socket.onerror = (err) => console.error('[WS] 错误:', err);
+            }
+
+            startHeartbeat() {
+                this.pingTimer = setInterval(() => {
+                    this.send('ping');
+                    this.pongTimer = setTimeout(() => {
+                        console.warn('[Heartbeat] 超时重连');
+                        this.socket.close(); 
+                    }, this.pongTimeout);
+                }, this.pingInterval);
+            }
+
+            resetHeartbeat() { clearTimeout(this.pongTimer); }
+            clearTimers() { clearInterval(this.pingTimer); clearTimeout(this.pongTimer); }
+
+            reconnect() {
+                if (this.reconnectCount >= this.maxReconnectAttempts) {
+                    appendMessage('系统', '重连失败', 'error');
+                    return;
+                }
+                this.reconnectCount++;
+                setTimeout(() => {
+                    this.connect();
+                    this.reconnectTimeout *= 2;
+                }, this.reconnectTimeout);
+            }
+
+            close() {
+                this.isExplicityClosed = true;
+                this.socket.close();
+            }
+        }
+
+        const myWS = new MyWebSocket('ws://localhost:3001');
+
+        sendBtn.onclick = () => {
+            const msg = messageInput.value;
+            if (msg) {
+                myWS.send('message', msg);
+                appendMessage('我', msg, 'client');
+                messageInput.value = '';
+            }
+        };
+
+        closeBtn.onclick = () => myWS.close();
+
+        function appendMessage(from, text, className) {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = `[${from}]: ${text}`;
+            messageList.appendChild(div);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+    </script>
+</body>
+</html>
