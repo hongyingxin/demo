@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { vitePluginStats } from './src/plugins/vite-plugin-stats'
 // import { myLearningPlugin } from './src/plugins/my-learning-plugin'
 // import { vitePluginPractical } from './src/plugins/vite-plugin-practical'
 // import { vitePluginDemo } from './src/plugins/vite-plugin-demo'
@@ -8,6 +9,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [
     vue(),
+    vitePluginStats({ includeNodeModules: false }),
     // myLearningPlugin(),
     // vitePluginPractical()
     // vitePluginDemo()

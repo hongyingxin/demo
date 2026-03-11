@@ -1,6 +1,24 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import HelloWorld from './components/HelloWorld.vue'
+import axios from 'axios'
+import { debounce } from 'lodash-es'
+
 console.log('🚀 [App] 组件加载');
+
+const testDebounce = debounce(() => {
+  console.log('Debounced function called');
+}, 500);
+
+onMounted(async () => {
+  testDebounce();
+  try {
+    const res = await axios.get('https://api.github.com/zen');
+    console.log('Github Zen:', res.data);
+  } catch (e) {
+    console.error('Axios error:', e);
+  }
+});
 </script>
 
 <template>
