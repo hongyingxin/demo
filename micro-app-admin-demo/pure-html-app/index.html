@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Pure HTML App</title>
+    <style>
+        .container {
+            padding: 20px;
+            background-color: #f0f9eb;
+            border: 2px solid #67c23a;
+            border-radius: 8px;
+            color: #1f2d3d;
+        }
+        .title {
+            color: #67c23a;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #67c23a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #85ce61;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="title">这是纯 HTML 子应用</h2>
+        <p>我不依赖任何前端框架（Vue/React），我只是一个静态的 HTML 页面。</p>
+        
+        <div style="margin: 20px 0;">
+            <p>当前时间：<span id="time">加载中...</span></p>
+            <button class="btn" onclick="updateTime()">更新时间</button>
+        </div>
+
+        <div style="margin: 20px 0; padding: 10px; background: white; border: 1px dashed #ccc;">
+            <p>收到主应用数据：<strong id="main-data">暂无</strong></p>
+            <div id="auth-info" style="margin-top: 10px; color: #e67e22; font-weight: bold;">
+                未登录凭据
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="btn" onclick="sendToMain()">向主应用发送回传</button>
+                <button class="btn" style="background-color: #e6a23c;" onclick="simulate401()">模拟 401 登出</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            document.getElementById("time").innerText = new Date().toLocaleTimeString();
+        }
+        updateTime();
+
+        // 模拟 401 登出
+        function simulate401() {
+            if (window.microApp) {
+                console.log("[纯 HTML] 发送 401 指令");
+                window.microApp.dispatch({ type: "UNAUTHORIZED" });
+            }
+        }
+
+        // 定义更新 UI 的函数
+        function updateAuthUI(data) {
+            console.log("纯 HTML 应用处理凭据数据:", data);
+            const authDiv = document.getElementById("auth-info");
+            if (data && data.uid) {
+                authDiv.innerHTML = `✅ 已同步凭据 - UID: ${data.uid} <br/> Ticket: ${data.ticket}`;
+                authDiv.style.color = "#27ae60";
+            } else {
+                authDiv.innerHTML = "🔒 未登录凭据";
+                authDiv.style.color = "#f56c6c";
+            }
+        }
+
+        // 定义处理普通 data 的函数
+        function handleDataChange(data) {
+            console.log("纯 HTML 应用收到普通数据:", data);
+            if (data && data.msg) {
+                document.getElementById("main-data").innerText = data.msg;
+            }
+        }
+
+        // 【核心修复】使用 microApp 提供的 API 代替原生事件监听
+        if (window.microApp) {
+            // 1. 监听普通数据 (来自主应用的 :data 属性)
+            window.microApp.addDataListener(handleDataChange);
+
+            // 2. 监听全局数据 (Global Data)
+            // 第二个参数 true 表示如果当前已有数据，立即执行一次回调
+            window.microApp.addGlobalDataListener(updateAuthUI, true);
+        } else {
+            console.error("未检测到 microApp 环境，请确保作为子应用运行");
+        }
+
+        function sendToMain() {
+            if (window.microApp) {
+                window.microApp.dispatch({ reply: "来自纯 HTML 应用的问候！" });
+            }
+        }
+    </script>
+</body>
+</html>

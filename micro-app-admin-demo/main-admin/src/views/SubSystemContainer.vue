@@ -7,8 +7,9 @@
       iframe
       router-mode="native"
       baseroute="/sub-system"
-      @mounted="loading = false"
-      @error="loading = false"
+      @mounted="handleMounted"
+      @error="handleError"
+      @datachange="handleDataChange"
     ></micro-app>
   </div>
 </template>
@@ -20,6 +21,19 @@ import microApp from '@micro-zoe/micro-app'
 
 const loading = ref(true)
 const route = useRoute()
+
+// 处理子应用发送的数据
+const handleDataChange = (e) => {
+  const data = e.detail.data
+  if (data.type === 'UNAUTHORIZED') {
+    console.warn('[主应用] 检测到子应用 401，执行全局登出')
+    localStorage.removeItem('admin_uid')
+    localStorage.removeItem('admin_ticket')
+    microApp.setGlobalData({ uid: null, ticket: null })
+    alert('登录已过期，请重新登录')
+    window.location.reload() 
+  }
+}
 
 // 当子应用挂载完成后，立即执行一次同步
 const handleMounted = () => {

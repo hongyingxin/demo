@@ -1,0 +1,8 @@
+{
+  "name": "pure-html-app",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npx serve . -p 4002 --cors"
+  }
+}
