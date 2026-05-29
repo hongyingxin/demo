@@ -5,6 +5,7 @@
       name="pure-html-app" 
       url="http://localhost:4002/" 
       iframe
+      router-mode="native"
       baseroute="/pure-html"
       :data="{ msg: '来自主应用的问候 (给纯 HTML)' }"
       @mounted="loading = false"

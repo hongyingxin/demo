@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router"
 
+console.log('sub-admin router',window.__MICRO_APP_BASE_ROUTE__)
+
 const routes = [
   { path: "/", component: () => import("./views/Dashboard.vue") },
   { path: "/users", component: () => import("./views/UserList.vue") },

@@ -5,26 +5,46 @@ export class AppService {
   getMenus() {
     return [
       {
-        id: "main",
-        name: "主系统",
-        icon: "🏠",
-        menus: [{ title: "控制台", path: "/", icon: "📈" }]
+        title: "控制台",
+        icon: "Monitor",
+        path: "/",
+        app: "main"
       },
       {
-        id: "sub",
-        name: "业务系统",
-        icon: "📊",
-        menus: [
-          { title: "用户管理", path: "/sub-system/users", icon: "👥" },
-          { title: "订单管理", path: "/sub-system/orders", icon: "📦" },
-          { title: "仪表盘", path: "/sub-system/", icon: "📊" }
+        title: "业务管理",
+        icon: "Briefcase",
+        children: [
+          {
+            title: "用户管理",
+            path: "/sub-system/users",
+            icon: "User",
+            app: "sub-admin"
+          },
+          {
+            title: "订单管理",
+            path: "/sub-system/orders",
+            icon: "ShoppingCart",
+            app: "sub-admin"
+          }
         ]
       },
       {
-        id: "pure",
-        name: "外部工具",
-        icon: "📄",
-        menus: [{ title: "纯 HTML 页面", path: "/pure-html/", icon: "📄" }]
+        title: "混合示例",
+        icon: "Menu",
+        children: [
+          {
+            title: "子应用仪表盘",
+            path: "/sub-system/",
+            icon: "Odometer",
+            app: "sub-admin"
+          },
+          {
+            title: "纯 HTML 工具",
+            path: "/pure-html/",
+            icon: "Document",
+            app: "pure-html-app"
+          }
+        ]
       }
     ];
   }

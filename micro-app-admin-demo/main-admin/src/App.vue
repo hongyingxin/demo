@@ -1,50 +1,99 @@
 <template>
   <!-- 如果是登录页，不显示侧边栏和顶栏 -->
-  <div v-if="$route.name === 'login'">
+  <div v-if="$route.name === 'login'" class="login-layout">
     <router-view></router-view>
   </div>
 
-  <div v-else class="admin-layout">
-    <aside class="sidebar">
-      <div class="logo">管理后台 (基座)</div>
-      
-      <!-- 系统切换器 (顶层菜单) -->
-      <div class="system-switcher">
-        <div 
-          v-for="sys in systems" 
-          :key="sys.id"
-          :class="['sys-item', activeSystem === sys.id ? 'active' : '']"
-          @click="switchSystem(sys)"
-        >
-          {{ sys.name }}
-        </div>
+  <el-container v-else class="admin-layout">
+    <!-- 左侧侧边栏 -->
+    <el-aside :width="isCollapsed ? '64px' : '240px'" class="sidebar">
+      <div class="sidebar-header">
+        <el-icon :size="24" color="#409eff"><Rocket /></el-icon>
+        <span v-show="!isCollapsed" class="logo-text">Admin Pro</span>
       </div>
 
       <!-- 动态渲染侧边栏菜单 -->
-      <nav>
-        <div class="menu-group">{{ currentSystemName }} - 菜单</div>
-        <router-link 
-          v-for="menu in currentMenus" 
-          :key="menu.path" 
-          :to="menu.path"
-        >
-          {{ menu.icon }} {{ menu.title }}
-        </router-link>
-      </nav>
-    </aside>
-    <section class="main-content">
-      <header class="navbar">
-        <span>当前位置：{{ $route.path }}</span>
-        <div class="user-info">
-          <span style="margin-right: 10px; color: #27ae60;">🟢 {{ auth.uid }}</span>
-          <button @click="logout" class="login-btn logout">退出登录</button>
+      <el-menu
+        :default-active="$route.path"
+        :collapse="isCollapsed"
+        background-color="#001529"
+        text-color="#ffffffb3"
+        active-text-color="#fff"
+        router
+        unique-opened
+        class="menu-nav"
+      >
+        <template v-for="item in menuList" :key="item.title">
+          <!-- 有子菜单的情况 -->
+          <el-sub-menu v-if="item.children" :index="item.title">
+            <template #title>
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.title }}</span>
+            </template>
+            <el-menu-item 
+              v-for="sub in item.children" 
+              :key="sub.path" 
+              :index="sub.path"
+            >
+              <el-icon v-if="sub.icon && sub.icon.length > 2"><component :is="sub.icon" /></el-icon>
+              <span v-else class="menu-custom-icon">{{ sub.icon }}</span>
+              <template #title>{{ sub.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 无子菜单的情况 -->
+          <el-menu-item v-else :index="item.path">
+            <el-icon><component :is="item.icon" /></el-icon>
+            <template #title>{{ item.title }}</template>
+          </el-menu-item>
+        </template>
+      </el-menu>
+    </el-aside>
+
+    <!-- 右侧主体内容 -->
+    <el-container class="main-container">
+      <el-header class="main-header">
+        <div class="header-left">
+          <div class="collapse-trigger" @click="isCollapsed = !isCollapsed">
+            <el-icon :size="20">
+              <component :is="isCollapsed ? 'Expand' : 'Fold'" />
+            </el-icon>
+          </div>
+          <el-breadcrumb separator="/" class="breadcrumb-nav">
+            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item>{{ currentRouteTitle }}</el-breadcrumb-item>
+          </el-breadcrumb>
         </div>
-      </header>
-      <div class="view-body">
-        <router-view></router-view>
-      </div>
-    </section>
-  </div>
+        
+        <div class="header-right">
+          <el-dropdown trigger="click">
+            <div class="user-profile">
+              <el-avatar :size="32" class="avatar">AD</el-avatar>
+              <span class="username">{{ auth.uid || '未登录' }}</span>
+              <el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </el-header>
+
+      <el-main class="main-content">
+        <router-view v-slot="{ Component }">
+          <transition name="fade-transform" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </el-main>
+
+      <el-footer class="main-footer">
+        Micro-App Admin Demo &copy; 2026 Powered by NestJS & Element Plus
+      </el-footer>
+    </el-container>
+  </el-container>
 </template>
 
 <script setup>
@@ -55,60 +104,37 @@ import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
+const isCollapsed = ref(false)
 const auth = reactive({
   uid: '',
   ticket: ''
 })
 
 // 菜单数据状态
-const systems = ref([])
-const allMenus = ref({})
-const activeSystem = ref('')
+const menuList = ref([])
 
-const currentSystemName = computed(() => {
-  return systems.value.find(s => s.id === activeSystem.value)?.name || '加载中'
-})
-
-const currentMenus = computed(() => {
-  return allMenus.value[activeSystem.value] || []
-})
-
-const switchSystem = (sys) => {
-  activeSystem.value = sys.id
-  if (currentMenus.value.length > 0) {
-    router.push(currentMenus.value[0].path)
+const currentRouteTitle = computed(() => {
+  for (const item of menuList.value) {
+    if (item.path === route.path) return item.title
+    if (item.children) {
+      const sub = item.children.find(s => s.path === route.path)
+      if (sub) return sub.title
+    }
   }
-}
+  return '控制台'
+})
 
 // 从后端获取菜单
 const fetchMenus = async () => {
   try {
     const response = await axios.get('http://localhost:3000/menus')
-    const data = response.data
-    
-    // 转换后端数据格式
-    systems.value = data.map(sys => ({
-      id: sys.id,
-      name: sys.name,
-      icon: sys.icon
-    }))
-    
-    const menusMap = {}
-    data.forEach(sys => {
-      menusMap[sys.id] = sys.menus
-    })
-    allMenus.value = menusMap
-    
-    // 默认激活第一个系统
-    if (systems.value.length > 0 && !activeSystem.value) {
-      activeSystem.value = systems.value[0].id
-    }
+    menuList.value = response.data
   } catch (error) {
     console.error('获取菜单失败:', error)
   }
 }
 
-// 监听路由变化：处理登录成功后的状态同步和菜单拉取
+// 监听路由变化
 watch(
   () => route.path,
   (newPath) => {
@@ -119,12 +145,8 @@ watch(
       if (savedUid && savedTicket) {
         auth.uid = savedUid
         auth.ticket = savedTicket
-        
-        // 同步给微前端
         microApp.setGlobalData({ uid: auth.uid, ticket: auth.ticket })
-        
-        // 如果菜单还没加载，则加载菜单
-        if (systems.value.length === 0) {
+        if (menuList.value.length === 0) {
           fetchMenus()
         }
       }
@@ -133,22 +155,13 @@ watch(
   { immediate: true }
 )
 
-// 初始化时从 localStorage 加载
 onMounted(() => {
   const savedUid = localStorage.getItem('admin_uid')
   const savedTicket = localStorage.getItem('admin_ticket')
-  
   if (savedUid && savedTicket) {
     auth.uid = savedUid
     auth.ticket = savedTicket
-    
-    // 同步给微前端全局数据
-    microApp.setGlobalData({
-      uid: auth.uid,
-      ticket: auth.ticket
-    })
-    
-    // 获取菜单
+    microApp.setGlobalData({ uid: auth.uid, ticket: auth.ticket })
     fetchMenus()
   }
 })
@@ -156,70 +169,150 @@ onMounted(() => {
 const logout = () => {
   auth.uid = ''
   auth.ticket = ''
-  
-  // 从 localStorage 移除
   localStorage.removeItem('admin_uid')
   localStorage.removeItem('admin_ticket')
-  
-  // 清除全局数据
-  microApp.setGlobalData({
-    uid: null,
-    ticket: null
-  })
-
-  // 跳转到登录页
+  microApp.setGlobalData({ uid: null, ticket: null })
   router.push('/login')
 }
 </script>
 
 <style>
-/* 系统切换器样式 */
-.system-switcher {
+:root {
+  --sidebar-bg: #001529;
+  --header-height: 60px;
+}
+
+body {
+  margin: 0;
+  font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
+}
+
+.admin-layout {
+  height: 100vh;
+}
+
+.sidebar {
+  background-color: var(--sidebar-bg);
+  transition: width 0.3s;
   display: flex;
-  background: #1f2d3d;
-  padding: 5px;
-  gap: 5px;
+  flex-direction: column;
+  overflow-x: hidden;
 }
-.sys-item {
+
+.sidebar-header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background: #002140;
+  color: white;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.menu-nav {
+  border-right: none;
   flex: 1;
+}
+
+.menu-group-title {
+  padding: 15px 20px 5px;
   font-size: 12px;
+  color: #ffffff73;
+  text-transform: uppercase;
+}
+
+.menu-custom-icon {
+  margin-right: 12px;
+  font-size: 16px;
+}
+
+.sidebar-footer {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #002140;
+  color: #ffffffb3;
+  cursor: pointer;
+  border-top: 1px solid #ffffff1a;
+}
+
+.sidebar-footer:hover { color: #fff; }
+
+.main-header {
+  background-color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px 0 0; /* 调整 padding 给左侧按钮留空间 */
+  border-bottom: 1px solid #dcdfe6;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.collapse-trigger {
+  padding: 0 20px;
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  transition: background 0.3s;
+}
+
+.collapse-trigger:hover {
+  background: #f9f9f9;
+}
+
+.breadcrumb-nav {
+  margin-left: 10px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.username {
+  font-size: 14px;
+  color: #606266;
+}
+
+.main-content {
+  background-color: #f0f2f5;
+  padding: 20px;
+}
+
+.main-footer {
+  height: 40px;
+  line-height: 40px;
   text-align: center;
-  padding: 8px 0;
-  cursor: pointer;
-  border-radius: 4px;
   color: #909399;
-  transition: 0.3s;
-}
-.sys-item.active {
-  background: #409EFF;
-  color: white;
-}
-.sys-item:hover:not(.active) {
-  background: #263445;
+  font-size: 12px;
+  background: #f0f2f5;
 }
 
-/* ... 现有样式 ... */
-.login-btn {
-  padding: 6px 15px;
-  background: #409EFF;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+/* Transitions */
+.fade-transform-enter-active,
+.fade-transform-leave-active {
+  transition: all 0.3s;
 }
-.login-btn.logout { background: #f56c6c; }
-/* ... 现有样式 ... */
-body { margin: 0; font-family: sans-serif; }
-.admin-layout { display: flex; height: 100vh; }
-.sidebar { width: 240px; background: #2c3e50; color: white; display: flex; flex-direction: column; }
-.logo { padding: 20px; font-size: 20px; font-weight: bold; border-bottom: 1px solid #34495e; }
-.sidebar nav { flex: 1; padding: 10px 0; }
-.sidebar a { display: block; padding: 12px 20px; color: #bdc3c7; text-decoration: none; transition: 0.3s; }
-.sidebar a:hover { background: #34495e; color: white; }
-.sidebar .router-link-active { background: #409EFF; color: white; }
-.menu-group { padding: 20px 20px 10px; font-size: 12px; color: #7f8c8d; text-transform: uppercase; }
+.fade-transform-enter-from { opacity: 0; transform: translateX(-20px); }
+.fade-transform-leave-to { opacity: 0; transform: translateX(20px); }
 
-.main-content { flex: 1; display: flex; flex-direction: column; background: #f5f7f9; }
-.navbar { height: 60px; background: white; border-bottom: 1px solid #dcdfe6; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
-.view-body { flex: 1; padding: 20px; overflow-y: auto; }
+.el-menu-item.is-active {
+  background-color: #409eff !important;
+}
 </style>

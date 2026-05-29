@@ -1,18 +1,24 @@
 <template>
   <div class="login-container">
-    <div class="login-box">
-      <h2>系统登录</h2>
-      <div class="form-item">
-        <input v-model="form.username" type="text" placeholder="用户名 (任意)" />
-      </div>
-      <div class="form-item">
-        <input v-model="form.password" type="password" placeholder="密码 (任意)" />
-      </div>
-      <button @click="handleLogin" :disabled="loading" class="login-btn">
-        {{ loading ? '登录中...' : '登 录' }}
-      </button>
-      <p class="tips">提示：点击登录即可模拟成功</p>
-    </div>
+    <el-card class="login-box">
+      <template #header>
+        <h2 class="login-title">系统登录</h2>
+      </template>
+      <el-form :model="form" label-position="top">
+        <el-form-item label="用户名">
+          <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="form.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
+            {{ loading ? '登录中...' : '登 录' }}
+          </el-button>
+        </el-form-item>
+      </el-form>
+      <div class="tips">提示：点击登录即可模拟成功</div>
+    </el-card>
   </div>
 </template>
 
@@ -32,18 +38,11 @@ const form = reactive({
 const handleLogin = async () => {
   loading.value = true
   try {
-    // 调用 NestJS 登录接口
     const response = await axios.post('http://localhost:3000/login', form)
     const { uid, ticket } = response.data
-    
-    // 1. 持久化
     localStorage.setItem('admin_uid', uid)
     localStorage.setItem('admin_ticket', ticket)
-    
-    // 2. 设置微前端全局数据
     microApp.setGlobalData({ uid, ticket })
-    
-    // 3. 跳转到首页
     router.push('/')
   } catch (error) {
     console.error('登录失败:', error)
@@ -63,32 +62,22 @@ const handleLogin = async () => {
   background: #2d3a4b;
 }
 .login-box {
-  width: 400px;
-  padding: 40px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-  text-align: center;
+  width: 450px;
 }
-h2 { margin-bottom: 30px; color: #333; }
-.form-item { margin-bottom: 20px; }
-input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  box-sizing: border-box;
+.login-title {
+  margin: 0;
+  text-align: center;
+  font-size: 24px;
+  color: #333;
 }
 .login-btn {
   width: 100%;
-  padding: 12px;
-  background: #409EFF;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
+  margin-top: 10px;
 }
-.login-btn:disabled { background: #a0cfff; }
-.tips { margin-top: 20px; font-size: 12px; color: #999; }
+.tips {
+  margin-top: 15px;
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+}
 </style>
