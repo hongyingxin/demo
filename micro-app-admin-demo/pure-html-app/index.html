@@ -34,7 +34,7 @@
         
         <div style="margin: 20px 0;">
             <p>当前时间：<span id="time">加载中...</span></p>
-            <button class="btn" onclick="updateTime()">更新时间</button>
+            <button class="btn" id="update-time-btn">更新时间</button>
         </div>
 
         <div style="margin: 20px 0; padding: 10px; background: white; border: 1px dashed #ccc;">
@@ -43,8 +43,8 @@
                 未登录凭据
             </div>
             <div style="margin-top: 10px;">
-                <button class="btn" onclick="sendToMain()">向主应用发送回传</button>
-                <button class="btn" style="background-color: #e6a23c;" onclick="simulate401()">模拟 401 登出</button>
+                <button class="btn" id="send-to-main-btn">向主应用发送回传</button>
+                <button class="btn" id="simulate-401-btn" style="background-color: #e6a23c;">模拟 401 登出</button>
             </div>
         </div>
     </div>
@@ -101,6 +101,10 @@
                 window.microApp.dispatch({ reply: "来自纯 HTML 应用的问候！" });
             }
         }
+
+        document.getElementById("update-time-btn").addEventListener("click", updateTime);
+        document.getElementById("send-to-main-btn").addEventListener("click", sendToMain);
+        document.getElementById("simulate-401-btn").addEventListener("click", simulate401);
     </script>
 </body>
 </html>
