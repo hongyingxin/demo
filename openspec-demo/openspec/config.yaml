@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  项目名称：openspec-demo（OpenSpec 规范驱动开发练习）
+  技术栈：Vue 3、Vite、TypeScript、Vitest、@vue/test-utils
+  目标：通过 Todo 前端应用，完整走一遍 OpenSpec 工作流
+  约定：
+    - 代码放在 src/，测试放在 src/__tests__/
+    - 每个任务粒度控制在 30 分钟 ~ 2 小时
+    - 先写 spec，再写代码，再写测试
+    - 使用中文编写 OpenSpec 工件（proposal、design、tasks、spec）
+  目录约定：
+    - src/components/   可复用 UI 组件
+    - src/composables/  业务逻辑 composable
+    - src/views/        页面级组件（路由对应）
+    - src/router/       Vue Router 配置
+
+rules:
+  proposal:
+    - 必须包含章节：背景与动机、变更内容、目标、范围（包含/不包含）
+    - 章节标题使用中文
+    - 保持简洁，不超过 500 字
+  tasks:
+    - 每个任务必须可独立验证
+    - 单任务不超过 2 小时工作量
+    - 使用 checkbox 格式，按模块分组
+  specs:
+    - 使用「新增 / 修改 / 移除」增量格式
+    - 场景描述使用「给定 / 当 / 则」结构
+    - 每条需求至少包含一个场景
+  design:
+    - 必须包含：方案概述、目录结构变更、关键决策及理由
+    - 不写具体实现代码，只写架构与接口
